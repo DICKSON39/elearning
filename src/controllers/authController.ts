@@ -94,7 +94,7 @@ export const loginUser = asyncHandler(async (req: Request, res: Response) => {
       roleId: user.roleId,
       phoneNumber: user.phoneNumber,
     },
-    accessToken: accessToken, // Include the accessToken in the response body
+    accessToken: accessToken, // Include the accessToken in the response body during production
   });
 });
 
@@ -116,5 +116,7 @@ export const logoutUser = asyncHandler(async (req: Request, res: Response) => {
 
   res.status(200).json({ message: "User logged out successfully" });
 });
+
+
 
 

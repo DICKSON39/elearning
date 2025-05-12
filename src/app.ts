@@ -11,6 +11,7 @@ import teacherRoutes from './routes/teacher.routes'
 import classRoutes from './routes/class.routes'
 import path from "path";
 import paymentRoutes from './routes/payment.routes'
+import enrollmentRoutes from './routes/enrollment.routes'
 
 
 dotenv.config();
@@ -47,6 +48,7 @@ app.use('/api/v1/courses',courseRoutes)
 app.use('/api/v1/teachers',teacherRoutes)
 app.use('/api/v1',classRoutes);
 app.use('/api/v1/payment',paymentRoutes);
+app.use('/api/v1/enrollment',enrollmentRoutes)
 
 app.use('/uploads/courses', express.static(path.join(__dirname, '..', 'uploads', 'courses')));
 
