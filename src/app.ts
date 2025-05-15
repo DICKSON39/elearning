@@ -2,7 +2,7 @@ import express from "express";
 import { AppDataSource } from "./config/data-source";
 import dotenv from "dotenv";
 import cors from "cors";
-import { createDefaultRoles } from "./seeders/seedRoles";
+
 import morgan from "morgan";
 import authRoutes from "./routes/auth.routes";
 import userRoutes from "./routes/user.routes";
@@ -26,7 +26,7 @@ const allowedOrigins = ["http://localhost:4200"];
 
 app.use(
   cors({
-    origin: function (origin, callback) {
+    origin: (origin: string | undefined, callback: Function) => {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -37,7 +37,8 @@ app.use(
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
-);
+)
+
 
 
 
@@ -52,6 +53,9 @@ app.use('/api/v1/enrollment',enrollmentRoutes)
 
 app.use('/uploads/courses', express.static(path.join(__dirname, '..', 'uploads', 'courses')));
 
+app.get('/', (req, res) => {
+  res.send('Hello World!');
+});
 
 
 //console.log("Static image path:", path.join(__dirname, 'uploads', 'courses'));
@@ -61,6 +65,8 @@ app.use((req, res, next) => {
   next();
 });
 
+
+
 AppDataSource.initialize().then(async () => {
   //console.log(`Data source has been initialized`);
 
@@ -68,5 +74,6 @@ AppDataSource.initialize().then(async () => {
 
   app.listen(PORT, () => console.log(`✅✅Port 👌👌👌is running at ${PORT} `));
 });
+
 
 

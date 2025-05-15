@@ -9,4 +9,7 @@ router.post('/register',registerUser);
 router.post('/login',loginUser);
 router.post('/logout',logoutUser);
 
+console.log("✅ Auth routes loaded");
+
+
 export default router

@@ -5,116 +5,127 @@ import { UserRequest } from "../utils/types/user";
 import { constrainedMemory } from "process";
 
 export const makePayment = asyncHandler(
-    async (req: UserRequest, res: Response) => {
-      const userId = req.user?.id;
-      const { courseId, amount } = req.body;
-      const paymentDate = new Date();
-  
-      // Input validation: Check for required fields
-      if (!courseId || !amount) {
-        return res
-          .status(400)
-          .json({
-            message: "Missing required fields: courseId and amount are required.",
-          });
-      }
-  
-      // 1. Get the user's role ID and role name
-      const userRoleQuery = `
-        SELECT u."roleId", r.name AS role_name
-        FROM public."user" u
-        JOIN public.role r ON u."roleId" = r.id  -- Join with the role table
-        WHERE u.id = $1
-      `;
-      const userRoleValues = [userId];
-  
-      try {
-        const userRoleResult = await pool.query(userRoleQuery, userRoleValues);
-        if (userRoleResult.rows.length === 0) {
-           res.status(404).json({ message: "User not found." }); // User not found
-           return
-        }
-        const userRole = userRoleResult.rows[0].role_name; // Get the role name
-  
-        if (userRole !== "Student") {
-          res.status(403).json({ message: "Only students can make payments." });
-          return
-        }
-      } catch (error) {
-        console.error("Error checking user role:", error);
-        res.status(500).json({ message: "Error checking user role", error });
-        return
-      }
-  
-      // 2. Get the course price
-      const coursePriceQuery = `
-        SELECT price FROM public.course WHERE id = $1
-      `;
-      const coursePriceValues = [courseId];
-  
-      try {
-        const coursePriceResult = await pool.query(
-          coursePriceQuery,
-          coursePriceValues
-        );
-        if (coursePriceResult.rows.length === 0) {
-          res.status(404).json({ message: "Course not found." });
-          return
-        }
-        const coursePrice = parseFloat(coursePriceResult.rows[0].price); // Ensure coursePrice is a number
-  
-        // Convert amount to a number and validate
-        const paymentAmount = parseFloat(amount);
-        if (isNaN(paymentAmount)) {
-          return res.status(400).json({ message: "Invalid payment amount. Must be a valid number." });
-        }
-  
-        // 3. Check if the payment amount matches the course price
-        if (paymentAmount !== coursePrice) {
-           res
-            .status(400)
-            .json({ message: "Payment amount does not match the course price." });
-            return
-        }
-      } catch (error) {
-        console.error("Error fetching course price:", error);
-        res.status(500).json({ message: "Error fetching course price", error });
-        return
-      }
-  
-      // 4. Check if the user has already paid for the course
-      const checkQuery = `
-          SELECT * FROM public.payment WHERE "userId" = $1 AND "courseId" = $2
-        `;
-      const checkValues = [userId, courseId];
-  
-      try {
-        const checkResult = await pool.query(checkQuery, checkValues);
-        if (checkResult.rows.length > 0) {
-          res.status(400).json({ message: "Already paid for this course" });
-          return
-        }
-      } catch (error) {
-        console.error("Error checking payment status:", error);
-         res.status(500).json({ message: "Error checking payment status", error });
+  async (req: UserRequest, res: Response) => {
+    const userId = req.user?.id;
+    const { courseId, amount } = req.body;
+    const paymentDate = new Date();
+
+    if (!courseId || !amount) {
+      return res.status(400).json({
+        message: "Missing required fields: courseId and amount are required.",
+      });
+    }
+
+    // Get user role
+    const userRoleQuery = `
+      SELECT u."roleId", r.name AS role_name
+      FROM public."user" u
+      JOIN public.role r ON u."roleId" = r.id
+      WHERE u.id = $1
+    `;
+    const userRoleValues = [userId];
+
+    try {
+      const userRoleResult = await pool.query(userRoleQuery, userRoleValues);
+      if (userRoleResult.rows.length === 0) {
+         res.status(404).json({ message: "User not found." });
          return
       }
-  
-      // If all checks pass, proceed with payment creation
-      try {
-        const result = await pool.query(
-          `INSERT INTO public.payment ("userId", "courseId", amount, status, "paymentDate")
-            VALUES ($1, $2, $3, 'paid', $4) RETURNING *`, //  Set status to 'paid'
-          [userId, courseId, amount, paymentDate]
-        );
-  
-        res.status(201).json(result.rows[0]);
-      } catch (error) {
-        console.error("Error processing payment:", error);
-        res.status(500).json({ message: "Error processing payment", error });
+
+      const userRole = userRoleResult.rows[0].role_name;
+      if (userRole !== "Student") {
+        return res.status(403).json({ message: "Only students can make payments." });
       }
+    } catch (error) {
+      console.error("Error checking user role:", error);
+       res.status(500).json({ message: "Error checking user role", error });
+       return
     }
-  );;
+
+    // Get course price
+    try {
+      const coursePriceResult = await pool.query(
+        `SELECT price FROM public.course WHERE id = $1`,
+        [courseId]
+      );
+      if (coursePriceResult.rows.length === 0) {
+         res.status(404).json({ message: "Course not found." });
+         return
+      }
+
+      const coursePrice = parseFloat(coursePriceResult.rows[0].price);
+      const paymentAmount = parseFloat(amount);
+
+      if (isNaN(paymentAmount)) {
+         res.status(400).json({ message: "Invalid payment amount. Must be a valid number." });
+         return;
+      }
+
+      if (paymentAmount !== coursePrice) {
+        res.status(400).json({ message: "Payment amount does not match the course price." });
+        return
+      }
+    } catch (error) {
+      console.error("Error fetching course price:", error);
+       res.status(500).json({ message: "Error fetching course price", error });
+       return
+    }
+
+    // Check existing payment
+    try {
+      const checkResult = await pool.query(
+        `SELECT * FROM public.payment WHERE "userId" = $1 AND "courseId" = $2`,
+        [userId, courseId]
+      );
+      if (checkResult.rows.length > 0) {
+         res.status(400).json({ message: "Already paid for this course" });
+         return
+      }
+    } catch (error) {
+      console.error("Error checking payment status:", error);
+      res.status(500).json({ message: "Error checking payment status", error });
+       return
+    }
+
+    // Proceed with payment
+    try {
+      const paymentResult = await pool.query(
+        `INSERT INTO public.payment ("userId", "courseId", amount, status, "paymentDate")
+         VALUES ($1, $2, $3, 'paid', $4) RETURNING *`,
+        [userId, courseId, amount, paymentDate]
+      );
+
+      // Check if already enrolled
+      const enrolled = await pool.query(
+        `SELECT * FROM public.enrollment WHERE "studentId" = $1 AND "courseId" = $2`,
+        [userId, courseId]
+      );
+      if (enrolled.rows.length > 0) {
+         res.status(200).json({
+          message: "Payment successful. User already enrolled.",
+          payment: paymentResult.rows[0],
+        });
+        return;
+      }
+
+      // Enroll the student
+      const enrollResult = await pool.query(
+        `INSERT INTO public.enrollment ("studentId", "courseId") VALUES ($1, $2) RETURNING *`,
+        [userId, courseId]
+      );
+
+      res.status(201).json({
+        message: "Payment successful and student enrolled.",
+        payment: paymentResult.rows[0],
+        enrollment: enrollResult.rows[0],
+      });
+    } catch (error) {
+      console.error("Error processing payment or enrollment:", error);
+      res.status(500).json({ message: "Error processing payment or enrollment", error });
+    }
+  }
+);
+;
 export const getPayments = asyncHandler(
   async (req: UserRequest, res: Response) => {
     const userId = req.user?.id;
@@ -316,5 +327,6 @@ export const getStudentPayments = asyncHandler(async (req: UserRequest, res: Res
     res.status(500).json({ message: "Error fetching student payments", error });
   }
 });
+
 
 
