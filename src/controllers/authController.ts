@@ -6,7 +6,7 @@ import { generateToken } from "../utils/helpers/generateToken";
 import {validateInviteCode,markInviteCodeAsUsed} from "../services/auth.service";
 
 // Register User
-// Register User
+
 export const registerUser = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
         const client = await pool.connect();
@@ -18,9 +18,10 @@ export const registerUser = asyncHandler(
                 return
             }
 
+            let roleIdToUse = roleId; // fallback if no invite
             // Check invite code
-            const inviteResult = await client.query(
-                "SELECT * FROM public.invite_code WHERE code = $1 AND is_used = false",
+            const inviteResult = await pool.query(
+                `SELECT * FROM public.invite_code WHERE code = $1 AND "isUsed" = false`,
                 [inviteCode]
             );
 
@@ -28,6 +29,9 @@ export const registerUser = asyncHandler(
                  res.status(400).json({ message: "Invalid or already used invite code" });
                 return
             }
+
+
+            roleIdToUse = invite.rows[0].roleId;
 
             // Check for duplicate email
             const emailCheck = await client.query(
