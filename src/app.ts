@@ -22,7 +22,7 @@ const PORT = process.env.PORT;
 app.use(express.json());
 app.use(morgan("dev"));
 
-const allowedOrigins = ["http://localhost:4200","https://online-courses-gamma.vercel.app/"];
+const allowedOrigins = ["https://online-courses-gamma.vercel.app",];
 
 app.use(
   cors({
