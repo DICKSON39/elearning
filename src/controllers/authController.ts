@@ -26,9 +26,10 @@ export const registerUser = asyncHandler(
             // If invite code is provided, validate and get its role
             if (inviteCode) {
                 const inviteResult = await client.query(
-                    `SELECT * FROM public.invite_code WHERE code = $1 AND "isUsed" = false`,
+                    `SELECT * FROM public.invite_code WHERE code = $1`,
                     [inviteCode]
                 );
+
 
                 if (inviteResult.rows.length === 0) {
                      res.status(400).json({ message: "Invalid or already used invite code" });
@@ -76,12 +77,7 @@ export const registerUser = asyncHandler(
             const newUser = insertUserResult.rows[0];
 
             // If invite code used, mark it as used
-            if (inviteCode) {
-                await client.query(
-                    `UPDATE public.invite_code SET "isUsed" = true WHERE code = $1`,
-                    [inviteCode]
-                );
-            }
+
 
             // Commit DB transaction
             await client.query('COMMIT');
