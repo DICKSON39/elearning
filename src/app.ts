@@ -51,10 +51,10 @@ app.use('/api/v1',classRoutes);
 app.use('/api/v1/payment',paymentRoutes);
 app.use('/api/v1/enrollment',enrollmentRoutes)
 
-app.use('/uploads/courses', express.static(path.join(process.cwd(), 'src', 'uploads', 'courses')));
+app.use('/uploads/courses', express.static(path.join(process.cwd(), 'uploads', 'courses')));
 
 app.get('/test-upload', (req, res) => {
-    res.sendFile(path.join(process.cwd(), 'src', 'uploads', 'courses', '1747831219824-image.png'));
+    res.sendFile(path.join(process.cwd(),  'uploads', 'courses', '1747831219824-image.png'));
 });
 
 
