@@ -11,6 +11,7 @@ import classRoutes from './routes/class.routes'
 import path from "path";
 import paymentRoutes from './routes/payment.routes'
 import enrollmentRoutes from './routes/enrollment.routes'
+import {seedInviteCodes} from "./seeders/inviteCode.seed";
 
 
 
@@ -76,7 +77,8 @@ app.use((req, res, next) => {
 AppDataSource.initialize().then(async () => {
   console.log(`Data source has been initialized`);
 
-  //await createDefaultRoles();
+  //await seedInviteCodes();
+
     app.listen(PORT, () => console.log(`✅✅Port 👌👌👌is running at ${PORT} `));
 
 

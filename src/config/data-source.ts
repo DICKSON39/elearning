@@ -10,6 +10,7 @@ import { Course } from '../entities/Course';
 import { Class } from '../entities/Class';
 import dotenv from 'dotenv'
 import { Certificate } from '../entities/Certificate';
+import {InviteCode} from "../entities/RoleInvite.entity";
 
 dotenv.config();
 
@@ -23,7 +24,7 @@ export const AppDataSource = new DataSource({
     database: process.env.DB_NAME,
     synchronize:true,
     logging:false,
-    entities: [User,Attendance,Certificate,Payment,Role,Enrollment,Course,Class],
+    entities: [User,Attendance,Certificate,Payment,Role,Enrollment,Course,Class,InviteCode],
 
     ssl: {
         rejectUnauthorized: false
