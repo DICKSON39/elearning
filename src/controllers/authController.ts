@@ -102,11 +102,6 @@ export const registerUser = asyncHandler(
         }
     }
 );
-
-
-
-
-
 // Login User
 export const loginUser = asyncHandler(async (req: Request, res: Response) => {
   const { email, password } = req.body;

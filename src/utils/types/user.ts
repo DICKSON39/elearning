@@ -11,4 +11,9 @@ export interface User {
 
 export interface UserRequest extends Request {
   user?: User;
+  query: {
+    page?: string;
+    pageSize?: string;
+    searchTerm?: string;
+  }
 }

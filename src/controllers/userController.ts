@@ -36,17 +36,69 @@ export const getUserProfile = async (req: Request, res: Response) => {
   }
 };
 export const getUsers = asyncHandler(async (req: UserRequest, res: Response) => {
-    const result = await pool.query(
-      `SELECT id AS user_id, name, email, "roleId" AS role_id, "phoneNumber" FROM public.user ORDER BY id ASC`
+    const page = parseInt(req.query.page || '1'); // Default to page 1
+    const pageSize = parseInt(req.query.pageSize || '10'); // Default to 10 items per page
+    const searchTerm = req.query.searchTerm ? req.query.searchTerm.toLowerCase() : '';
+
+    // Calculate OFFSET for pagination
+    const offset = (page - 1) * pageSize;
+
+    let whereClause = '';
+    const queryParams: any[] = [pageSize, offset];
+    let paramIndex = 3; // Start index for searchTerm parameter if it exists
+
+    if (searchTerm) {
+        whereClause = `
+            WHERE
+                LOWER(name) LIKE $${paramIndex} OR
+                LOWER(email) LIKE $${paramIndex} OR
+                LOWER("phoneNumber") LIKE $${paramIndex}
+            `;
+        queryParams.push(`%${searchTerm}%`);
+        paramIndex++; // Increment for any future parameters
+    }
+
+    // 1. Get total count of filtered users (for totalPages calculation)
+    const countResult = await pool.query(
+        `SELECT COUNT(id) FROM public.user ${whereClause}`,
+        queryParams.slice(paramIndex - 1) // Pass only the searchTerm if present
     );
-    res.status(200).json(result.rows.map(row => ({
-      id: row.user_id,
-      name: row.name,
-      email: row.email,
-      roleId: row.role_id,
-      phoneNumber: row.phoneNumber,
-    })));
-  });
+    const totalItems = parseInt(countResult.rows[0].count, 10);
+    const totalPages = Math.ceil(totalItems / pageSize);
+
+    // 2. Get paginated and filtered users
+    const result = await pool.query(
+        `
+        SELECT
+            id AS user_id,
+            name,
+            email,
+            "roleId" AS role_id,
+            "phoneNumber"
+        FROM
+            public.user
+        ${whereClause}
+        ORDER BY
+            id ASC
+        LIMIT $1 OFFSET $2;
+        `,
+        queryParams // Pass all parameters including limit and offset
+    );
+
+    res.status(200).json({
+        items: result.rows.map(row => ({
+            id: row.user_id,
+            name: row.name,
+            email: row.email,
+            roleId: row.role_id,
+            phoneNumber: row.phoneNumber,
+        })),
+        totalItems: totalItems,
+        currentPage: page,
+        pageSize: pageSize,
+        totalPages: totalPages,
+    });
+});
 export const deleteUsers = asyncHandler(async (req: Request, res: Response) => {
     const userId = parseInt(req.params.id); // Assuming your route defines the user ID as ':id'
   
