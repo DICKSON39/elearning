@@ -31,7 +31,7 @@ export const registerUser = asyncHandler(
             }
 
 
-            roleIdToUse = invite.rows[0].roleId;
+            roleIdToUse = inviteResult.rows[0].roleId;
 
             // Check for duplicate email
             const emailCheck = await client.query(
