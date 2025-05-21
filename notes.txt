@@ -1,0 +1,9 @@
+ docker tag backend-backend  dicksonndumia19/newbackend:latest
+
+docker push dicksonndumia19/newbackend:latest
+
+ ssh -i "backendMain.pem" ec2-user@ec2-52-205-254-132.compute-1.amazonaws.com
+
+docker-compose up -d
+
+docker run -d  -p 80:80  backend-backend dicksonndumia19/newbackend:latest

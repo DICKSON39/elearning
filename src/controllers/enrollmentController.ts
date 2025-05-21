@@ -2,7 +2,6 @@ import express, { Request, Response } from "express";
 import pool from "../config/db.config";
 import { asyncHandler } from "../middlewares/asyncHandler";
 import { UserRequest } from "../utils/types/user";
-
 export const enrollUser = asyncHandler(
   async (req: UserRequest, res: Response) => {
     const userId = req.user?.id;
@@ -70,5 +69,6 @@ export const enrollUser = asyncHandler(
     return;
   }
 );
+
 
 

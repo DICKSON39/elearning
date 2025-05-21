@@ -1,7 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, ManyToOne } from "typeorm";
 import { User } from "./User";
 import { Course } from "./Course";
-
 @Entity()
 export class Payment {
   @PrimaryGeneratedColumn()
@@ -21,4 +20,10 @@ export class Payment {
 
   @Column()
   paymentDate!: Date;
+
+  @Column({ nullable: true })
+  checkoutRequestID?: string;
 }
+
+
+

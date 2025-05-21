@@ -24,6 +24,9 @@ export const AppDataSource = new DataSource({
     synchronize:true,
     logging:false,
     entities: [User,Attendance,Certificate,Payment,Role,Enrollment,Course,Class],
+
+    ssl: false,
+
     
 })
 

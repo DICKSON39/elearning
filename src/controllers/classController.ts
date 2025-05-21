@@ -5,7 +5,6 @@ import { AppDataSource } from "../config/data-source";
 import { Course } from "../entities/Course";
 import { Class } from "../entities/Class";
 import pool from "../config/db.config";
-
 export const createClass = asyncHandler(
   async (req: UserRequest, res: Response) => {
     const teacherId = req.user?.id; // From token
@@ -62,7 +61,6 @@ export const createClass = asyncHandler(
     }
   }
 );
-
 export const getTeacherClasses = asyncHandler(
   async (req: UserRequest, res: Response) => {
     const teacherId = req.user?.id; // From token
@@ -103,7 +101,6 @@ export const getTeacherClasses = asyncHandler(
     }
   }
 );
-
 export const getClassById = asyncHandler(
   async (req: Request, res: Response) => {
     const classId = req.params.id;
@@ -144,7 +141,6 @@ export const getClassById = asyncHandler(
     }
   }
 );
-
 export const updateClass = asyncHandler(
   async (req: UserRequest, res: Response) => {
     const classId = req.params.id;

@@ -2,7 +2,6 @@ import express from "express";
 import { AppDataSource } from "./config/data-source";
 import dotenv from "dotenv";
 import cors from "cors";
-
 import morgan from "morgan";
 import authRoutes from "./routes/auth.routes";
 import userRoutes from "./routes/user.routes";
@@ -14,6 +13,7 @@ import paymentRoutes from './routes/payment.routes'
 import enrollmentRoutes from './routes/enrollment.routes'
 
 
+
 dotenv.config();
 
 const app = express();
@@ -22,7 +22,7 @@ const PORT = process.env.PORT;
 app.use(express.json());
 app.use(morgan("dev"));
 
-const allowedOrigins = ["http://localhost:4200"];
+const allowedOrigins = ["http://localhost:4200","https://online-courses-gamma.vercel.app/"];
 
 app.use(
   cors({
@@ -62,18 +62,24 @@ app.get('/', (req, res) => {
 // Log incoming requests (for debugging)
 app.use((req, res, next) => {
   console.log(`[REQUEST] ${req.method} ${req.url}`);
+
   next();
 });
 
 
 
 AppDataSource.initialize().then(async () => {
-  //console.log(`Data source has been initialized`);
+  console.log(`Data source has been initialized`);
 
   //await createDefaultRoles();
+    app.listen(PORT, () => console.log(`✅✅Port 👌👌👌is running at ${PORT} `));
 
-  app.listen(PORT, () => console.log(`✅✅Port 👌👌👌is running at ${PORT} `));
+
 });
+
+
+
+
 
 
 

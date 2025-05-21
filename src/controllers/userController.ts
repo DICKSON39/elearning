@@ -3,7 +3,6 @@ import pool from '../config/db.config';
 import { asyncHandler } from '../middlewares/asyncHandler';
 import { UserRequest } from '../utils/types/user';
 import bcrypt from 'bcryptjs';
-
 export const getUserProfile = async (req: Request, res: Response) => {
   const userId = parseInt(req.params.userId);
 
@@ -36,8 +35,6 @@ export const getUserProfile = async (req: Request, res: Response) => {
      return;
   }
 };
-;
-
 export const getUsers = asyncHandler(async (req: UserRequest, res: Response) => {
     const result = await pool.query(
       `SELECT id AS user_id, name, email, "roleId" AS role_id, "phoneNumber" FROM public.user ORDER BY id ASC`
@@ -50,8 +47,7 @@ export const getUsers = asyncHandler(async (req: UserRequest, res: Response) => 
       phoneNumber: row.phoneNumber,
     })));
   });
-
-  export const deleteUsers = asyncHandler(async (req: Request, res: Response) => {
+export const deleteUsers = asyncHandler(async (req: Request, res: Response) => {
     const userId = parseInt(req.params.id); // Assuming your route defines the user ID as ':id'
   
     if (isNaN(userId)) {
@@ -70,8 +66,7 @@ export const getUsers = asyncHandler(async (req: UserRequest, res: Response) => 
   
     res.status(200).json({ message: `✅ User with ID ${userId} deleted successfully` });
   });
-
-  export const updateUser = asyncHandler(async (req: Request, res: Response) => {
+export const updateUser = asyncHandler(async (req: Request, res: Response) => {
     const { name, email, phoneNumber, roleId, password } = req.body;
     const userId = parseInt(req.params.id); // Use the user ID from the URL
   
@@ -138,11 +133,6 @@ export const getUsers = asyncHandler(async (req: UserRequest, res: Response) => 
     });
     return;
   });
-  
-  
-  
-  
- 
 export const getAllTeachers = asyncHandler(async (req: Request, res: Response) => {
   const result = await pool.query(`
     SELECT u.id, u.name, u.email, r.name AS role_name
@@ -153,8 +143,6 @@ export const getAllTeachers = asyncHandler(async (req: Request, res: Response) =
   
   res.status(200).json(result.rows);
 });
-
-
 export const getTeacherById = asyncHandler(async (req: Request, res: Response) => {
   const { teacherId } = req.params; // Assuming the teacher ID is passed as a URL parameter
 

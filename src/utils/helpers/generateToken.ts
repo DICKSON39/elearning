@@ -29,7 +29,7 @@ export const generateToken = (res: Response, userId: string, roleId: number) => 
       httpOnly: true,
       secure: process.env.NODE_ENV !== "development", // Secure in production
       sameSite: "strict",
-      maxAge: 30 * 60 * 1000, 
+      maxAge: 50 * 60 * 1000,
     });
 
     // Set Refresh Token as HTTP-Only Secure Cookie

@@ -2,130 +2,213 @@ import express, { Request, Response } from "express";
 import pool from "../config/db.config";
 import { asyncHandler } from "../middlewares/asyncHandler";
 import { UserRequest } from "../utils/types/user";
-import { constrainedMemory } from "process";
+import Stripe from 'stripe'
+import {generateToken, initiateSTKPush} from "../utils/mpesa";
 
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+    apiVersion: '2025-04-30.basil',
+});
 export const makePayment = asyncHandler(
-  async (req: UserRequest, res: Response) => {
-    const userId = req.user?.id;
-    const { courseId, amount } = req.body;
-    const paymentDate = new Date();
+    async (req: UserRequest, res: Response) => {
+        const userId = req.user?.id;
+        const { courseId, paymentMethod, phoneNumber } = req.body;
 
-    if (!courseId || !amount) {
-      return res.status(400).json({
-        message: "Missing required fields: courseId and amount are required.",
-      });
-    }
+        if (!userId) {
+            res.status(400).json({ message: "Missing userId." });
+            return;
+        }
 
-    // Get user role
-    const userRoleQuery = `
-      SELECT u."roleId", r.name AS role_name
-      FROM public."user" u
-      JOIN public.role r ON u."roleId" = r.id
-      WHERE u.id = $1
-    `;
-    const userRoleValues = [userId];
+        if (!courseId) {
+           res.status(400).json({ message: "Missing courseId." });
+            return
+        }
 
-    try {
-      const userRoleResult = await pool.query(userRoleQuery, userRoleValues);
-      if (userRoleResult.rows.length === 0) {
-         res.status(404).json({ message: "User not found." });
-         return
-      }
+        // Get course price early
+        const courseResult = await pool.query(
+            `SELECT id, price FROM public.course WHERE id = $1`,
+            [courseId]
+        );
 
-      const userRole = userRoleResult.rows[0].role_name;
-      if (userRole !== "Student") {
-        return res.status(403).json({ message: "Only students can make payments." });
-      }
-    } catch (error) {
-      console.error("Error checking user role:", error);
-       res.status(500).json({ message: "Error checking user role", error });
-       return
-    }
+        if (courseResult.rows.length === 0) {
+            return res.status(404).json({ message: "Course not found." });
+        }
 
-    // Get course price
-    try {
-      const coursePriceResult = await pool.query(
-        `SELECT price FROM public.course WHERE id = $1`,
-        [courseId]
-      );
-      if (coursePriceResult.rows.length === 0) {
-         res.status(404).json({ message: "Course not found." });
-         return
-      }
+        const coursePrice = parseFloat(courseResult.rows[0].price); // price in number
 
-      const coursePrice = parseFloat(coursePriceResult.rows[0].price);
-      const paymentAmount = parseFloat(amount);
+        if (paymentMethod === 'mpesa') {
+            const token = await generateToken();
+            const stkResponse = await initiateSTKPush(token, phoneNumber, coursePrice);
 
-      if (isNaN(paymentAmount)) {
-         res.status(400).json({ message: "Invalid payment amount. Must be a valid number." });
-         return;
-      }
+            // Extract CheckoutRequestID from M-Pesa response
+            const checkoutRequestID = stkResponse.CheckoutRequestID;
 
-      if (paymentAmount !== coursePrice) {
-        res.status(400).json({ message: "Payment amount does not match the course price." });
-        return
-      }
-    } catch (error) {
-      console.error("Error fetching course price:", error);
-       res.status(500).json({ message: "Error fetching course price", error });
-       return
-    }
+            // Save payment with 'pending' status and checkoutRequestID
+            await pool.query(
+                `INSERT INTO public.payment ("userId", "courseId", amount, status, "paymentDate", "checkoutRequestID")
+         VALUES ($1, $2, $3, $4, $5, $6)`,
+                [userId, courseId, coursePrice, 'pending', new Date(), checkoutRequestID]
+            );
 
-    // Check existing payment
-    try {
-      const checkResult = await pool.query(
-        `SELECT * FROM public.payment WHERE "userId" = $1 AND "courseId" = $2`,
-        [userId, courseId]
-      );
-      if (checkResult.rows.length > 0) {
-         res.status(400).json({ message: "Already paid for this course" });
-         return
-      }
-    } catch (error) {
-      console.error("Error checking payment status:", error);
-      res.status(500).json({ message: "Error checking payment status", error });
-       return
-    }
+             res.status(200).json({
+                message: "M-Pesa STK Push initiated.",
+                data: stkResponse,
+            });
+            return
+        }
 
-    // Proceed with payment
-    try {
-      const paymentResult = await pool.query(
-        `INSERT INTO public.payment ("userId", "courseId", amount, status, "paymentDate")
-         VALUES ($1, $2, $3, 'paid', $4) RETURNING *`,
-        [userId, courseId, amount, paymentDate]
-      );
+        // Role check
+        const userRoleQuery = `
+            SELECT u."roleId", r.name AS role_name
+            FROM public."user" u
+                     JOIN public.role r ON u."roleId" = r.id
+            WHERE u.id = $1
+        `;
+        const userRoleResult = await pool.query(userRoleQuery, [userId]);
+        const userRole = userRoleResult.rows[0]?.role_name;
 
-      // Check if already enrolled
-      const enrolled = await pool.query(
-        `SELECT * FROM public.enrollment WHERE "studentId" = $1 AND "courseId" = $2`,
-        [userId, courseId]
-      );
-      if (enrolled.rows.length > 0) {
-         res.status(200).json({
-          message: "Payment successful. User already enrolled.",
-          payment: paymentResult.rows[0],
+        if (userRole !== "Student") {
+             res.status(403).json({ message: "Only students can make payments." });
+            return
+        }
+
+        // Check if already paid
+        const checkPayment = await pool.query(
+            `SELECT * FROM public.payment WHERE "userId" = $1 AND "courseId" = $2`,
+            [userId, courseId]
+        );
+
+        if (checkPayment.rows.length > 0) {
+             res.status(400).json({ message: "Already paid for this course." });
+            return
+        }
+
+        // Stripe logic
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: Math.round(coursePrice * 100),
+            currency: "usd",
+            metadata: {
+                userId: userId.toString(),
+                courseId: courseId.toString(),
+            },
         });
-        return;
-      }
 
-      // Enroll the student
-      const enrollResult = await pool.query(
-        `INSERT INTO public.enrollment ("studentId", "courseId") VALUES ($1, $2) RETURNING *`,
-        [userId, courseId]
-      );
-
-      res.status(201).json({
-        message: "Payment successful and student enrolled.",
-        payment: paymentResult.rows[0],
-        enrollment: enrollResult.rows[0],
-      });
-    } catch (error) {
-      console.error("Error processing payment or enrollment:", error);
-      res.status(500).json({ message: "Error processing payment or enrollment", error });
+        res.status(200).json({
+            clientSecret: paymentIntent.client_secret,
+            message: "Payment initiated. Complete on client.",
+        });
     }
-  }
 );
-;
+
+export const mpesaCallback = asyncHandler(async (req: Request, res: Response) => {
+    const callbackData = req.body;
+    const stkCallback = callbackData.Body?.stkCallback;
+    if (!stkCallback) {
+       res.status(400).json({ message: 'Invalid callback data' });
+        return
+    }
+
+    const resultCode = stkCallback.ResultCode;
+    const checkoutRequestID = stkCallback.CheckoutRequestID;
+
+    // Fetch the payment info from DB by CheckoutRequestID
+    const paymentResult = await pool.query(
+        `SELECT * FROM public.payment WHERE "checkoutRequestID" = $1`,
+        [checkoutRequestID]
+    );
+
+    if (paymentResult.rows.length === 0) {
+         res.status(404).json({ message: 'Payment record not found' });
+        return
+    }
+
+    const payment = paymentResult.rows[0];
+    const userId = payment.userId;
+    const courseId = payment.courseId;
+
+    if (resultCode === 0) {
+        // Payment success - update payment status
+        await pool.query(
+            `UPDATE public.payment SET status = $1 WHERE id = $2`,
+            ['paid', payment.id]
+        );
+
+        // Enroll student if not already enrolled
+        const enrolled = await pool.query(
+            `SELECT * FROM public.enrollment WHERE "studentId" = $1 AND "courseId" = $2`,
+            [userId, courseId]
+        );
+
+        if (enrolled.rows.length === 0) {
+            await pool.query(
+                `INSERT INTO public.enrollment ("studentId", "courseId") VALUES ($1, $2)`,
+                [userId, courseId]
+            );
+        }
+
+        res.status(200).json({ message: 'Payment confirmed and student enrolled.' });
+        return;
+    } else {
+        // Payment failed or cancelled - update status
+        await pool.query(
+            `UPDATE public.payment SET status = $1 WHERE id = $2`,
+            ['failed', payment.id]
+        );
+         res.status(200).json({ message: 'Payment failed or cancelled.' });
+        return
+    }
+});
+
+export const confirmPayment = asyncHandler(async (req: UserRequest, res: Response) => {
+    const userId = req.user?.id;
+    const { courseId, paymentIntentId } = req.body;
+
+    if (!userId || !courseId || !paymentIntentId) {
+        res.status(400).json({ message: "Missing required info." });
+        return
+    }
+
+    const intent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    if (intent.status !== "succeeded") {
+         res.status(400).json({ message: "Payment not successful." });
+        return
+    }
+
+    try {
+        const paymentDate = new Date();
+
+        const paymentResult = await pool.query(
+            `INSERT INTO public.payment ("userId", "courseId", amount, status, "paymentDate")
+             VALUES ($1, $2, $3, 'paid', $4) RETURNING *`,
+            [userId, courseId, intent.amount / 100, paymentDate]
+        );
+
+        // Check if already enrolled
+        const enrolled = await pool.query(
+            `SELECT * FROM public.enrollment WHERE "studentId" = $1 AND "courseId" = $2`,
+            [userId, courseId]
+        );
+        if (enrolled.rows.length > 0) {
+             res.status(409).json({ message: "Already enrolled in this course." });
+            return
+        }
+
+        const enrollment = await pool.query(
+            `INSERT INTO public.enrollment ("studentId", "courseId") VALUES ($1, $2) RETURNING *`,
+            [userId, courseId]
+        );
+
+       res.status(200).json({
+            message: "Payment confirmed and student enrolled.",
+            payment: paymentResult.rows[0],
+            enrollment: enrollment.rows[0],
+        });
+        return
+    } catch (error) {
+        console.error("DB Insert Error:", error); // Log it
+        res.status(500).json({ message: "Payment success, but saving failed." });
+        return
+    }
+});
 export const getPayments = asyncHandler(
   async (req: UserRequest, res: Response) => {
     const userId = req.user?.id;
@@ -172,7 +255,6 @@ export const getPayments = asyncHandler(
     }
   }
 );
-
 export const getPaymentById = asyncHandler(
   async (req: UserRequest, res: Response) => {
     const userId = req.user?.id;
@@ -239,7 +321,6 @@ export const getPaymentById = asyncHandler(
     }
   }
 );
-
 export const getPaymentDetails = asyncHandler(
   async (req: UserRequest, res: Response) => {
     const userId = req.user?.id;
@@ -285,8 +366,6 @@ export const getPaymentDetails = asyncHandler(
     }
   }
 );
-
-
 export const getStudentPayments = asyncHandler(async (req: UserRequest, res: Response) => {
   const userId = req.user?.id;
   const courseId = req.query.courseId ? parseInt(req.query.courseId as string, 10) : null;
@@ -327,6 +406,8 @@ export const getStudentPayments = asyncHandler(async (req: UserRequest, res: Res
     res.status(500).json({ message: "Error fetching student payments", error });
   }
 });
+
+
 
 
 

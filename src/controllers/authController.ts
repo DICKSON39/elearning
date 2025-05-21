@@ -116,7 +116,3 @@ export const logoutUser = asyncHandler(async (req: Request, res: Response) => {
 
   res.status(200).json({ message: "User logged out successfully" });
 });
-
-
-
-

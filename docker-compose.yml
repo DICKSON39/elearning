@@ -1,0 +1,15 @@
+services:
+  backend:
+    build: .
+    container_name: NewBackend
+    ports:
+      - "80:80"
+    entrypoint: [ "sh", "./wait-for-it.sh", "database-1.c69ueskes3lz.us-east-1.rds.amazonaws.com:5432", "-t", "60", "--", "npm", "start" ]
+
+    env_file: .env
+    networks:
+      - newnetwork
+
+networks:
+  newnetwork:
+    driver: bridge

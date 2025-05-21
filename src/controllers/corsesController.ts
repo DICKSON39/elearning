@@ -233,7 +233,7 @@ export const deleteCourse = asyncHandler(async (req: UserRequest, res: Response)
   res.status(200).json({ message: "✅ Course deleted successfully" });
 });
 
-// PUT /api/v1/course/:id
+//Updating A course
 export const updateCourse = asyncHandler(async (req: UserRequest, res: Response) => {
   const courseId = parseInt(req.params.id);
   //console.log('BODY:', req.body);
