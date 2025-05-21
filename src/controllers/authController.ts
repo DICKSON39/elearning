@@ -13,7 +13,7 @@ export const registerUser = asyncHandler(
         try {
             const { name, email, password, phoneNumber, roleId, inviteCode } = req.body;
 
-            if (!name || !email || !password || !phoneNumber || !roleId ) {
+            if (!name || !email || !password || !phoneNumber  ) {
                  res.status(400).json({ message: "All fields are required" });
                 return
             }
