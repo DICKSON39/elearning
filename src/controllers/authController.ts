@@ -10,32 +10,38 @@ import {validateInviteCode,markInviteCodeAsUsed} from "../services/auth.service"
 export const registerUser = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
         const client = await pool.connect();
+
         try {
             const { name, email, password, phoneNumber, roleId, inviteCode } = req.body;
 
-            if (!name || !email || !password || !phoneNumber  ) {
+            // Basic validation
+            if (!name || !email || !password || !phoneNumber) {
                  res.status(400).json({ message: "All fields are required" });
                 return
             }
 
-            let roleIdToUse = roleId; // fallback if no invite
-            // Check invite code
-            const inviteResult = await pool.query(
-                `SELECT * FROM public.invite_code WHERE code = $1 AND "isUsed" = false`,
-                [inviteCode]
-            );
+            // Default to student role if roleId isn't provided
+            let roleIdToUse = roleId || 3;
 
-            if (inviteResult.rows.length === 0) {
-                 res.status(400).json({ message: "Invalid or already used invite code" });
-                return
+            // If invite code is provided, validate and get its role
+            if (inviteCode) {
+                const inviteResult = await client.query(
+                    `SELECT * FROM public.invite_code WHERE code = $1 AND "isUsed" = false`,
+                    [inviteCode]
+                );
+
+                if (inviteResult.rows.length === 0) {
+                     res.status(400).json({ message: "Invalid or already used invite code" });
+                    return
+                }
+
+                // Override roleId from the invite
+                roleIdToUse = inviteResult.rows[0].roleId;
             }
-
-
-            roleIdToUse = inviteResult.rows[0].roleId;
 
             // Check for duplicate email
             const emailCheck = await client.query(
-                "SELECT id FROM public.user WHERE email = $1",
+                `SELECT id FROM public.user WHERE email = $1`,
                 [email]
             );
             if (emailCheck.rows.length > 0) {
@@ -45,7 +51,7 @@ export const registerUser = asyncHandler(
 
             // Check for duplicate phone number
             const phoneCheck = await client.query(
-                'SELECT id FROM public.user WHERE "phoneNumber" = $1',
+                `SELECT id FROM public.user WHERE "phoneNumber" = $1`,
                 [phoneNumber]
             );
             if (phoneCheck.rows.length > 0) {
@@ -53,33 +59,38 @@ export const registerUser = asyncHandler(
                 return
             }
 
-            // Begin transaction
+            // Begin DB transaction
             await client.query('BEGIN');
 
-            // Hash password & insert user
+            // Hash the password
             const hashedPassword = await bcrypt.hash(password, 10);
+
+            // Insert new user
             const insertUserResult = await client.query(
                 `INSERT INTO public.user (name, email, password, "phoneNumber", "roleId")
-         VALUES ($1, $2, $3, $4, $5)
-         RETURNING id, name, email, "phoneNumber", "roleId"`,
-                [name, email, hashedPassword, phoneNumber, roleId]
+                 VALUES ($1, $2, $3, $4, $5)
+                 RETURNING id, name, email, "phoneNumber", "roleId"`,
+                [name, email, hashedPassword, phoneNumber, roleIdToUse]
             );
 
             const newUser = insertUserResult.rows[0];
 
-            // Mark invite code as used
-            await client.query(
-                "UPDATE public.invite_code SET is_used = true, used_by = $1 WHERE code = $2",
-                [newUser.id, inviteCode]
-            );
+            // If invite code used, mark it as used
+            if (inviteCode) {
+                await client.query(
+                    `UPDATE public.invite_code SET "isUsed" = true WHERE code = $1`,
+                    [inviteCode]
+                );
+            }
 
-            // Commit transaction
+            // Commit DB transaction
             await client.query('COMMIT');
 
             // Generate JWT token
             await generateToken(res, newUser.id, newUser.roleId);
 
-            res.status(201).json({
+            // Return success
+             res.status(201).json({
                 message: "User registered successfully",
                 user: newUser,
             });
@@ -95,6 +106,8 @@ export const registerUser = asyncHandler(
         }
     }
 );
+
+
 
 
 
