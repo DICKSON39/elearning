@@ -51,7 +51,8 @@ app.use('/api/v1',classRoutes);
 app.use('/api/v1/payment',paymentRoutes);
 app.use('/api/v1/enrollment',enrollmentRoutes)
 
-app.use('/uploads/courses', express.static(path.join(__dirname, '..', 'uploads', 'courses')));
+app.use('/uploads/courses', express.static(path.join(__dirname, 'uploads', 'courses')));
+
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
