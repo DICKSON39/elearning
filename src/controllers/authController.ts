@@ -94,7 +94,7 @@ export const loginUser = asyncHandler(async (req: Request, res: Response) => {
       roleId: user.roleId,
       phoneNumber: user.phoneNumber,
     },
-    accessToken: accessToken, // Include the accessToken in the response body during production
+    accessToken: accessToken,
   });
 });
 
