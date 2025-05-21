@@ -6,64 +6,92 @@ import { generateToken } from "../utils/helpers/generateToken";
 import {validateInviteCode,markInviteCodeAsUsed} from "../services/auth.service";
 
 // Register User
+// Register User
 export const registerUser = asyncHandler(
     async (req: Request, res: Response, next: NextFunction) => {
-        const { name, email, password, phoneNumber, roleId, inviteCode } = req.body;
+        const client = await pool.connect();
+        try {
+            const { name, email, password, phoneNumber, roleId, inviteCode } = req.body;
 
-        // Check invite code first
-        const invite = await pool.query(
-            "SELECT * FROM public.invite_code WHERE code = $1 AND is_used = false",
-            [inviteCode]
-        );
+            if (!name || !email || !password || !phoneNumber || !roleId ) {
+                 res.status(400).json({ message: "All fields are required" });
+                return
+            }
 
-        if (invite.rows.length === 0) {
-            res.status(400).json({ message: "Invalid or already used invite code" });
+            // Check invite code
+            const inviteResult = await client.query(
+                "SELECT * FROM public.invite_code WHERE code = $1 AND is_used = false",
+                [inviteCode]
+            );
+
+            if (inviteResult.rows.length === 0) {
+                 res.status(400).json({ message: "Invalid or already used invite code" });
+                return
+            }
+
+            // Check for duplicate email
+            const emailCheck = await client.query(
+                "SELECT id FROM public.user WHERE email = $1",
+                [email]
+            );
+            if (emailCheck.rows.length > 0) {
+                 res.status(400).json({ message: "User with this email already exists" });
+                return
+            }
+
+            // Check for duplicate phone number
+            const phoneCheck = await client.query(
+                'SELECT id FROM public.user WHERE "phoneNumber" = $1',
+                [phoneNumber]
+            );
+            if (phoneCheck.rows.length > 0) {
+                 res.status(400).json({ message: "User with this phone number already exists" });
+                return
+            }
+
+            // Begin transaction
+            await client.query('BEGIN');
+
+            // Hash password & insert user
+            const hashedPassword = await bcrypt.hash(password, 10);
+            const insertUserResult = await client.query(
+                `INSERT INTO public.user (name, email, password, "phoneNumber", "roleId")
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id, name, email, "phoneNumber", "roleId"`,
+                [name, email, hashedPassword, phoneNumber, roleId]
+            );
+
+            const newUser = insertUserResult.rows[0];
+
+            // Mark invite code as used
+            await client.query(
+                "UPDATE public.invite_code SET is_used = true, used_by = $1 WHERE code = $2",
+                [newUser.id, inviteCode]
+            );
+
+            // Commit transaction
+            await client.query('COMMIT');
+
+            // Generate JWT token
+            await generateToken(res, newUser.id, newUser.roleId);
+
+            res.status(201).json({
+                message: "User registered successfully",
+                user: newUser,
+            });
             return
-        }
 
-        // Then your existing checks
-        const userEmailExists = await pool.query(
-            "SELECT id FROM public.user WHERE email = $1",
-            [email]
-        );
-        if (userEmailExists.rows.length > 0) {
-            res.status(400).json({ message: "User with this email already exists" });
+        } catch (error) {
+            await client.query('ROLLBACK');
+            console.error("Registration error:", error);
+             res.status(500).json({ message: "Server error" });
             return
+        } finally {
+            client.release();
         }
-
-        const userPhoneExists = await pool.query(
-            'SELECT id FROM public.user WHERE "phoneNumber" = $1',
-            [phoneNumber]
-        );
-        if (userPhoneExists.rows.length > 0) {
-             res.status(400).json({ message: "User with this phone number already exists" });
-            return
-        }
-
-        // Hash password & insert user
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const newUser = await pool.query(
-            `INSERT INTO public.user (name, email, password, "phoneNumber", "roleId")
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, name, email, "phoneNumber", "roleId"`,
-            [name, email, hashedPassword, phoneNumber, roleId]
-        );
-
-        // Mark invite code as used
-        await pool.query(
-            "UPDATE public.invite_code SET is_used = true, used_by = $1 WHERE code = $2",
-            [newUser.rows[0].id, inviteCode]
-        );
-
-        // Generate JWT token
-        await generateToken(res, newUser.rows[0].id, newUser.rows[0].roleId);
-
-        res.status(201).json({
-            message: "User registered successfully",
-            user: newUser.rows[0],
-        });
     }
 );
+
 
 
 // Login User
