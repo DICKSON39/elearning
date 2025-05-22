@@ -3,6 +3,14 @@ import pool from '../config/db.config';
 import { asyncHandler } from '../middlewares/asyncHandler';
 import { UserRequest } from '../utils/types/user';
 import bcrypt from 'bcryptjs';
+
+interface Usermain extends Request {
+    query: {
+        page?: string;
+        pageSize?: string;
+        searchTerm?: string;
+    };
+}
 export const getUserProfile = async (req: Request, res: Response) => {
   const userId = parseInt(req.params.userId);
 
@@ -35,7 +43,7 @@ export const getUserProfile = async (req: Request, res: Response) => {
      return;
   }
 };
-export const getUsers = asyncHandler(async (req: UserRequest, res: Response) => {
+export const getUsers = asyncHandler(async (req: Usermain, res: Response) => {
     const page = parseInt(req.query.page || '1'); // Default to page 1
     const pageSize = parseInt(req.query.pageSize || '10'); // Default to 10 items per page
     const searchTerm = req.query.searchTerm ? req.query.searchTerm.toLowerCase() : '';
