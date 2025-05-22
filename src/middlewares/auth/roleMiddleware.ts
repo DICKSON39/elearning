@@ -36,12 +36,3 @@ export const AdminOrTeacher = (req: UserRequest, res: Response, next: NextFuncti
   }
 };
 
-
-export const Student = (req:UserRequest,res:Response,next:NextFunction) => {
-  if (req.user?.role_name === "Student") {
-    next();
-
-  } else {
-    res.status(403).json({ message: "You are not authorized to get the course" });
-  }
-}

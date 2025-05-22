@@ -1,6 +1,6 @@
 import express, { Router } from 'express'
 import { protect } from '../middlewares/auth/protect';
-import {Student, Teacher} from '../middlewares/auth/roleMiddleware';
+import { Teacher} from '../middlewares/auth/roleMiddleware';
 import {
     createClass,
     deleteClass,
