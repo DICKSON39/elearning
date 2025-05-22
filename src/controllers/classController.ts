@@ -340,4 +340,51 @@ export const getMyPaidClass = asyncHandler(async (req: UserRequest, res: Respons
     }
 });
 
+// NEW BACKEND ENDPOINT: To get the single latest paid class for a student
+export const getLatestPaidClassForStudent = asyncHandler(async (req: UserRequest, res: Response) => {
+    const userId = req.user?.id;
+
+    if (!userId) {
+        res.status(401).json({ message: "Not Authorized" });
+        return;
+    }
+
+    try {
+        // This query finds the latest (most recent startTime) class
+        // that the user has paid for and is enrolled in.
+        const result = await pool.query(
+            `
+            SELECT
+                c.id AS class_id,
+                c."courseId"
+            FROM public.class c
+            JOIN public.course co ON c."courseId" = co.id
+            WHERE c."courseId" IN (
+                SELECT p."courseId"
+                FROM public.payment p
+                WHERE p."userId" = $1
+            )
+            AND c."courseId" IN (
+                SELECT e."courseId"
+                FROM public.enrollment e
+                WHERE e."studentId" = $1
+            )
+            ORDER BY c."startTime" DESC -- Orders by start time descending to get the latest
+            LIMIT 1; -- Retrieves only the top (latest) one
+            `,
+            [userId]
+        );
+
+        if (result.rows.length > 0) {
+            res.status(200).json(result.rows[0]); // Return the single class_id and courseId
+        } else {
+            res.status(404).json({ message: "No paid classes found for this student to join." });
+        }
+
+    } catch (error) {
+        console.error("Error fetching latest paid class for student:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+})
+
 

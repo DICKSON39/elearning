@@ -4,7 +4,7 @@ import { Teacher} from '../middlewares/auth/roleMiddleware';
 import {
     createClass,
     deleteClass,
-    getClassById,
+    getClassById, getLatestPaidClassForStudent,
     getMyPaidClass,
     getTeacherClasses,
     updateClass
@@ -19,5 +19,6 @@ router.get('/class/:id',protect,getClassById)
 router.put('/class/:id',protect,Teacher,updateClass) 
 router.delete('/class/:id',protect,Teacher,deleteClass)
 router.post('/class/paid', protect, getMyPaidClass);
+router.get('/class/latest-paid',protect,getLatestPaidClassForStudent)
 
 export default router;
