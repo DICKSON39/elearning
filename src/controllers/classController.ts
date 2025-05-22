@@ -280,3 +280,64 @@ export const deleteClass = asyncHandler(
 );
 
 
+export const getMyPaidClass = asyncHandler(async (req: UserRequest, res: Response) => {
+    const userId = req.user?.id;
+    const { courseId, classId } = req.body; // Added classId
+
+    if (!userId) {
+        res.status(401).json({ message: "Not Authorized" });
+        return;
+    }
+
+    // Check if the user has paid for the course
+    const isCoursePaid = await pool.query(`SELECT * FROM public.payment WHERE "userId"=$1 AND "courseId"=$2`, [userId, courseId]);
+
+    if (isCoursePaid.rows.length === 0) { // Corrected check
+        res.status(409).json({ message: "You have not paid for the course" });
+        return;
+    }
+
+    // Check if the user is enrolled in the course
+    const enrolled = await pool.query(
+        `SELECT * FROM public.enrollment WHERE "studentId" = $1 AND "courseId" = $2`,
+        [userId, courseId]
+    );
+
+    if (enrolled.rows.length === 0) { // Corrected check
+        res.status(409).json({ message: "You must be enrolled in this course." });
+        return;
+    }
+
+    // Now Get the Class
+    try {
+        const classResult = await pool.query(
+            `
+                SELECT
+                    class.id,
+                    class."startTime",
+                    class."endTime",
+                    class."meetingLink",
+                    class."courseId",
+                    class."isLive",
+                    class."videoPath",
+                    course.title AS course_name,
+                    course.description AS course_description
+                FROM class
+                         LEFT JOIN course ON class."courseId" = course.id
+                WHERE class.id = $1
+            `,
+            [classId]
+        );
+
+        if (classResult.rows.length > 0) {
+            res.status(200).json(classResult.rows[0]);
+        } else {
+            res.status(404).json({ message: `Class with ID ${classId} not found` });
+        }
+    } catch (error) {
+        console.error("Error fetching class:", error);
+        res.status(500).json({ message: "Internal server error" });
+    }
+});
+
+
