@@ -206,7 +206,6 @@ export const updateUser = asyncHandler(async (req: Request, res: Response) => {
 });
 export const getAllTeachers = asyncHandler(
   async (req: UserRequest, res: Response) => {
-
     if (!req.user) {
       res.status(404).json({ message: "User not found" });
     }
@@ -218,17 +217,14 @@ export const getAllTeachers = asyncHandler(
     WHERE r.name = 'Teacher'
   `);
 
-      res.status(200).json({
-          items: result.rows.map((row) => ({
-              id: row.id,
-              name: row.name,
-              email: row.email,
-              roleId: row.role_id,
-
-          }))
-      })
-
-
+    res.status(200).json({
+      items: result.rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        roleId: row.role_id,
+      })),
+    });
   },
 );
 export const getTeacherById = asyncHandler(
@@ -258,19 +254,21 @@ export const getTeacherById = asyncHandler(
   },
 );
 
-
-export  const getAllStudents = asyncHandler(async (req: UserRequest, res: Response) => {
+export const getAllStudents = asyncHandler(
+  async (req: UserRequest, res: Response) => {
     if (!req.user) {
       res.status(404).json({ message: "User not found" });
     }
 
-  const result =  await pool.query(`SELECT u.id, u.name, u.email, r.name AS role_name
+    const result =
+      await pool.query(`SELECT u.id, u.name, u.email, r.name AS role_name
     FROM public.user u
     JOIN public.role r ON u."roleId" = r.id
     WHERE r.name = 'Student'`);
 
-  res.status(200).json({
+    res.status(200).json({
       message: " Student successfully",
       data: result.rows,
-  })
-})
+    });
+  },
+);

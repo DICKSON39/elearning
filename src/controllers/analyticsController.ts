@@ -43,38 +43,40 @@ export const getDashboard = asyncHandler(
   },
 );
 
-
-export const showOnlyTeachers = asyncHandler(async (req: UserRequest, res: Response) => {
+export const showOnlyTeachers = asyncHandler(
+  async (req: UserRequest, res: Response) => {
     if (!req.user) {
-        res.status(401).json({ message: "Not Authorized" });
+      res.status(401).json({ message: "Not Authorized" });
     }
 
-    const result = await pool.query(`SELECT * FROM public.user AS teacher JOIN public.role teacher_role ON teacher."roleId" = teacher_role.id WHERE teacher_role.name='Teacher' `)
+    const result = await pool.query(
+      `SELECT * FROM public.user AS teacher JOIN public.role teacher_role ON teacher."roleId" = teacher_role.id WHERE teacher_role.name='Teacher' `,
+    );
 
     res.status(200).json(
-        result.rows.map((row) => {
+      result.rows.map((row) => {
+        Email: row.teacher_role.email;
+        Phone: row.teacher_role.phoneNumber;
+      }),
+    );
+  },
+);
 
-            Email: row.teacher_role.email;
-            Phone: row.teacher_role.phoneNumber;
-
-        })
-    )
-})
-
-
-export const showOnlyStudents = asyncHandler((async (req: UserRequest, res: Response) => {
+export const showOnlyStudents = asyncHandler(
+  async (req: UserRequest, res: Response) => {
     if (!req.user) {
-        res.status(401).json({ message: "Not Authorized" });
+      res.status(401).json({ message: "Not Authorized" });
     }
 
-    const result = await pool.query(`SELECT * FROM public.user AS student JOIN public.role student_role ON student."roleId" = student_role.id WHERE student_role.name='Student'`)
+    const result = await pool.query(
+      `SELECT * FROM public.user AS student JOIN public.role student_role ON student."roleId" = student_role.id WHERE student_role.name='Student'`,
+    );
 
     res.status(200).json(
-        result.rows.map((row) => {
-
-            Email: row.student_role.email;
-            Phone: row.student_role.phoneNumber;
-
-        })
-    )
-}))
+      result.rows.map((row) => {
+        Email: row.student_role.email;
+        Phone: row.student_role.phoneNumber;
+      }),
+    );
+  },
+);
