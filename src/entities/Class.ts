@@ -28,10 +28,8 @@ export class Class {
   @OneToMany(() => Attendance, (attendance) => attendance.classSession)
   attendances!: Attendance[];
   @Column({ default: false })
-  isLive!: boolean;  // Whether the class is currently live
-
-  
+  isLive!: boolean; // Whether the class is currently live
 
   @Column({ nullable: true })
-  videoPath?: string;  
+  videoPath?: string;
 }

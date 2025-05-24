@@ -4,7 +4,6 @@ import { Course } from "./Course";
 
 @Entity()
 export class Enrollment {
-
   // @ts-ignore
   @PrimaryGeneratedColumn()
   id!: number;

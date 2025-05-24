@@ -1,40 +1,44 @@
-import jwt from 'jsonwebtoken'
-import pool from '../../config/db.config'
-import { asyncHandler } from '../asyncHandler'
-import { UserRequest } from '../../utils/types/user'
-import { NextFunction, Response } from 'express'
+import jwt from "jsonwebtoken";
+import pool from "../../config/db.config";
+import { asyncHandler } from "../asyncHandler";
+import { UserRequest } from "../../utils/types/user";
+import { NextFunction, Response } from "express";
 
-
-export const  protect = asyncHandler(async(req:UserRequest,res:Response,next:NextFunction)=> {
+export const protect = asyncHandler(
+  async (req: UserRequest, res: Response, next: NextFunction) => {
     let token;
 
-    if(req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
-        token = req.headers.authorization.split(" ")[1];
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
     }
 
-    
-if (!token) {
-    res.status(401).json({ message: "No token provided" });
-    return;
-  }
-
-    if(!token && req.cookies?.access_token) {
-        token = req.cookies.access_token;
+    if (!token) {
+      res.status(401).json({ message: "No token provided" });
+      return;
     }
 
+    if (!token && req.cookies?.access_token) {
+      token = req.cookies.access_token;
+    }
 
     try {
-        // console.log("Token Received", token)
+      // console.log("Token Received", token)
 
-        if(!process.env.JWT_SECRET){
-            throw new Error("JWT_SECRET is not defined in env variables")
-        }
+      if (!process.env.JWT_SECRET) {
+        throw new Error("JWT_SECRET is not defined in env variables");
+      }
 
-        const decoded = jwt.verify(token,process.env.JWT_SECRET) as {userId:string, roleId:number};
-        // console.log("✅ Token decoded:", decoded);
+      const decoded = jwt.verify(token, process.env.JWT_SECRET) as {
+        userId: string;
+        roleId: number;
+      };
+      // console.log("✅ Token decoded:", decoded);
 
-        const userQuery = await pool.query(
-           ` SELECT 
+      const userQuery = await pool.query(
+        ` SELECT 
             "user".id, 
             "user".name, 
             "user".email, 
@@ -43,24 +47,21 @@ if (!token) {
           FROM "user"
           JOIN role ON "user"."roleId" = role.id
           WHERE "user".id = $1
-        `, [decoded.userId]
-        );
+        `,
+        [decoded.userId],
+      );
 
-        
+      if (userQuery.rows.length === 0) {
+        res.status(401).json({ message: "User not found" });
+        return;
+      }
 
-        if(userQuery.rows.length === 0) {
-            res.status(401).json({message: "User not found"})
-            return
-        }
-
-        req.user = userQuery.rows[0];
-        next();
-        
-
+      req.user = userQuery.rows[0];
+      next();
     } catch (error) {
-        console.error("JWT Error:", error);
-        res.status(401).json({ message: "Not authorized, token failed" });
-         return
+      console.error("JWT Error:", error);
+      res.status(401).json({ message: "Not authorized, token failed" });
+      return;
     }
-
-})
+  },
+);

@@ -3,104 +3,111 @@ import { asyncHandler } from "../middlewares/asyncHandler";
 import pool from "../config/db.config";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../utils/helpers/generateToken";
-import {validateInviteCode,markInviteCodeAsUsed} from "../services/auth.service";
+import {
+  validateInviteCode,
+  markInviteCodeAsUsed,
+} from "../services/auth.service";
 
 // Register User
 
 export const registerUser = asyncHandler(
-    async (req: Request, res: Response, next: NextFunction) => {
-        const client = await pool.connect();
+  async (req: Request, res: Response, next: NextFunction) => {
+    const client = await pool.connect();
 
-        try {
-            const { name, email, password, phoneNumber, roleId, inviteCode } = req.body;
+    try {
+      const { name, email, password, phoneNumber, roleId, inviteCode } =
+        req.body;
 
-            // Basic validation
-            if (!name || !email || !password || !phoneNumber) {
-                 res.status(400).json({ message: "All fields are required" });
-                return
-            }
+      // Basic validation
+      if (!name || !email || !password || !phoneNumber) {
+        res.status(400).json({ message: "All fields are required" });
+        return;
+      }
 
-            // Default to student role if roleId isn't provided
-            let roleIdToUse = roleId || 3;
+      // Default to student role if roleId isn't provided
+      let roleIdToUse = roleId || 3;
 
-            // If invite code is provided, validate and get its role
-            if (inviteCode) {
-                const inviteResult = await client.query(
-                    `SELECT * FROM public.invite_code WHERE code = $1`,
-                    [inviteCode]
-                );
+      // If invite code is provided, validate and get its role
+      if (inviteCode) {
+        const inviteResult = await client.query(
+          `SELECT * FROM public.invite_code WHERE code = $1`,
+          [inviteCode],
+        );
 
+        if (inviteResult.rows.length === 0) {
+          res
+            .status(400)
+            .json({ message: "Invalid or already used invite code" });
+          return;
+        }
 
-                if (inviteResult.rows.length === 0) {
-                     res.status(400).json({ message: "Invalid or already used invite code" });
-                    return
-                }
+        // Override roleId from the invite
+        roleIdToUse = inviteResult.rows[0].roleId;
+      }
 
-                // Override roleId from the invite
-                roleIdToUse = inviteResult.rows[0].roleId;
-            }
+      // Check for duplicate email
+      const emailCheck = await client.query(
+        `SELECT id FROM public.user WHERE email = $1`,
+        [email],
+      );
+      if (emailCheck.rows.length > 0) {
+        res
+          .status(400)
+          .json({ message: "User with this email already exists" });
+        return;
+      }
 
-            // Check for duplicate email
-            const emailCheck = await client.query(
-                `SELECT id FROM public.user WHERE email = $1`,
-                [email]
-            );
-            if (emailCheck.rows.length > 0) {
-                 res.status(400).json({ message: "User with this email already exists" });
-                return
-            }
+      // Check for duplicate phone number
+      const phoneCheck = await client.query(
+        `SELECT id FROM public.user WHERE "phoneNumber" = $1`,
+        [phoneNumber],
+      );
+      if (phoneCheck.rows.length > 0) {
+        res
+          .status(400)
+          .json({ message: "User with this phone number already exists" });
+        return;
+      }
 
-            // Check for duplicate phone number
-            const phoneCheck = await client.query(
-                `SELECT id FROM public.user WHERE "phoneNumber" = $1`,
-                [phoneNumber]
-            );
-            if (phoneCheck.rows.length > 0) {
-                 res.status(400).json({ message: "User with this phone number already exists" });
-                return
-            }
+      // Begin DB transaction
+      await client.query("BEGIN");
 
-            // Begin DB transaction
-            await client.query('BEGIN');
+      // Hash the password
+      const hashedPassword = await bcrypt.hash(password, 10);
 
-            // Hash the password
-            const hashedPassword = await bcrypt.hash(password, 10);
-
-            // Insert new user
-            const insertUserResult = await client.query(
-                `INSERT INTO public.user (name, email, password, "phoneNumber", "roleId")
+      // Insert new user
+      const insertUserResult = await client.query(
+        `INSERT INTO public.user (name, email, password, "phoneNumber", "roleId")
                  VALUES ($1, $2, $3, $4, $5)
                  RETURNING id, name, email, "phoneNumber", "roleId"`,
-                [name, email, hashedPassword, phoneNumber, roleIdToUse]
-            );
+        [name, email, hashedPassword, phoneNumber, roleIdToUse],
+      );
 
-            const newUser = insertUserResult.rows[0];
+      const newUser = insertUserResult.rows[0];
 
-            // If invite code used, mark it as used
+      // If invite code used, mark it as used
 
+      // Commit DB transaction
+      await client.query("COMMIT");
 
-            // Commit DB transaction
-            await client.query('COMMIT');
+      // Generate JWT token
+      await generateToken(res, newUser.id, newUser.roleId);
 
-            // Generate JWT token
-            await generateToken(res, newUser.id, newUser.roleId);
-
-            // Return success
-             res.status(201).json({
-                message: "User registered successfully",
-                user: newUser,
-            });
-            return
-
-        } catch (error) {
-            await client.query('ROLLBACK');
-            console.error("Registration error:", error);
-             res.status(500).json({ message: "Server error" });
-            return
-        } finally {
-            client.release();
-        }
+      // Return success
+      res.status(201).json({
+        message: "User registered successfully",
+        user: newUser,
+      });
+      return;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      console.error("Registration error:", error);
+      res.status(500).json({ message: "Server error" });
+      return;
+    } finally {
+      client.release();
     }
+  },
 );
 // Login User
 export const loginUser = asyncHandler(async (req: Request, res: Response) => {
@@ -110,7 +117,7 @@ export const loginUser = asyncHandler(async (req: Request, res: Response) => {
     `SELECT id, name, email, password, "phoneNumber", "roleId"
        FROM public.user
        WHERE email = $1`,
-    [email]
+    [email],
   );
 
   if (userQuery.rows.length === 0) {
@@ -120,10 +127,8 @@ export const loginUser = asyncHandler(async (req: Request, res: Response) => {
 
   const user = userQuery.rows[0];
 
- 
-
   const isMatch = await bcrypt.compare(password, user.password);
- 
+
   if (!isMatch) {
     res.status(401).json({ message: "Invalid email or password" });
     return;

@@ -46,7 +46,7 @@ export const CreateCourse = asyncHandler(
     const result = await pool.query(
       `INSERT INTO public.course (title, description, price, "teacherId", "imageUrl") 
        VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [title, description, price, teacherId, imageUrl]
+      [title, description, price, teacherId, imageUrl],
     );
 
     res.status(201).json({
@@ -54,7 +54,7 @@ export const CreateCourse = asyncHandler(
       course: result.rows[0],
     });
     return;
-  }
+  },
 );
 
 export const getCoursesById = asyncHandler(
@@ -66,7 +66,7 @@ export const getCoursesById = asyncHandler(
         `SELECT id, title, description, price, "teacherId", "imageUrl"
        FROM public.course
        WHERE id = $1`,
-        [courseId]
+        [courseId],
       );
 
       if (courseQuery.rows.length === 0) {
@@ -78,13 +78,13 @@ export const getCoursesById = asyncHandler(
       console.error("Error fetching course:", error);
       res.status(500).json({ message: "Server error" });
     }
-  }
+  },
 );
 
 export const getAllCourse = asyncHandler(
   async (req: Request, res: Response) => {
     const result = await pool.query(
-      `SELECT id  title, description, price, "teacherId", "imageUrl"  FROM public.course ORDER BY id ASC`
+      `SELECT id  title, description, price, "teacherId", "imageUrl"  FROM public.course ORDER BY id ASC`,
     );
 
     res.status(200).json(
@@ -94,9 +94,9 @@ export const getAllCourse = asyncHandler(
         description: row.description,
         teacherId: row.teacherId,
         image: row.imageUrl,
-      }))
+      })),
     );
-  }
+  },
 );
 
 export const getAllCourseTeacher = asyncHandler(
@@ -114,7 +114,7 @@ export const getAllCourseTeacher = asyncHandler(
     JOIN public.user AS teacher ON course."teacherId" = teacher.id
     JOIN public.role AS teacher_role ON teacher."roleId" = teacher_role.id
     WHERE teacher_role.name = 'Teacher'
-    ORDER BY course.id ASC`
+    ORDER BY course.id ASC`,
     );
 
     // console.log("Database Result:", result);
@@ -128,9 +128,9 @@ export const getAllCourseTeacher = asyncHandler(
         teacherName: row.teacher_name,
         roleName: row.role_name,
         image: row.imageUrl,
-      }))
+      })),
     );
-  }
+  },
 );
 
 // Example of a controller function to get courses taught by the currently logged-in teacher (assuming you have some form of authentication middleware)
@@ -153,11 +153,11 @@ export const getMyCoursesAsTeacher = asyncHandler(
     FROM public.course
     WHERE course."teacherId" = $1
     ORDER BY course.id ASC`,
-      [teacherId]
+      [teacherId],
     );
 
     res.status(200).json(result.rows);
-  }
+  },
 );
 
 // Get courses by teacher (for logged-in teacher)
@@ -180,121 +180,129 @@ export const getTeacherCourses = asyncHandler(
     FROM public.course 
     WHERE course."teacherId" = $1
     ORDER BY course.id ASC`,
-      [teacherId]
+      [teacherId],
     );
 
     res.status(200).json(result.rows);
-  }
+  },
 );
 
+export const deleteCourse = asyncHandler(
+  async (req: UserRequest, res: Response) => {
+    const courseId = parseInt(req.params.id);
 
-export const deleteCourse = asyncHandler(async (req: UserRequest, res: Response) => {
-  const courseId = parseInt(req.params.id);
+    if (!req.user) {
+      res.status(401).json({ message: "Not Authorized" });
+      return;
+    }
 
-  if (!req.user) {
-    res.status(401).json({ message: "Not Authorized" });
-    return;
-  }
+    if (isNaN(courseId)) {
+      res.status(400).json({ message: "Invalid course ID" });
+      return;
+    }
 
-  if (isNaN(courseId)) {
-    res.status(400).json({ message: "Invalid course ID" });
-    return;
-  }
+    // Fetch course to verify ownership or existence
+    const courseResult = await pool.query(
+      `SELECT * FROM public.course WHERE id = $1`,
+      [courseId],
+    );
+    if (courseResult.rowCount === 0) {
+      res.status(404).json({ message: "Course not found" });
+      return;
+    }
 
-  // Fetch course to verify ownership or existence
-  const courseResult = await pool.query(`SELECT * FROM public.course WHERE id = $1`, [courseId]);
-  if (courseResult.rowCount === 0) {
-    res.status(404).json({ message: "Course not found" });
-    return;
-  }
+    const course = courseResult.rows[0];
 
-  const course = courseResult.rows[0];
+    // Only Admin or the teacher who created the course can delete
+    if (
+      req.user.role_name !== "Admin" &&
+      !(req.user.role_name === "Teacher" && req.user.id === course.teacherId)
+    ) {
+      res
+        .status(403)
+        .json({ message: "Access Denied: You cannot delete this course" });
+      return;
+    }
 
-  // Only Admin or the teacher who created the course can delete
-  if (
-    req.user.role_name !== "Admin" &&
-    !(req.user.role_name === "Teacher" && req.user.id === course.teacherId)
-  ) {
-    res.status(403).json({ message: "Access Denied: You cannot delete this course" });
-    return;
-  }
+    // Delete the course record
+    await pool.query(`DELETE FROM public.course WHERE id = $1`, [courseId]);
 
-  // Delete the course record
-  await pool.query(`DELETE FROM public.course WHERE id = $1`, [courseId]);
+    // Optionally delete the image file from disk
+    if (course.imageUrl) {
+      const imagePath = path.join(__dirname, "../../..", course.imageUrl);
+      fs.unlink(imagePath, (err) => {
+        if (err) console.warn("Failed to delete image:", err.message);
+      });
+    }
 
-  // Optionally delete the image file from disk
-  if (course.imageUrl) {
-    const imagePath = path.join(__dirname, "../../..", course.imageUrl);
-    fs.unlink(imagePath, (err) => {
-      if (err) console.warn("Failed to delete image:", err.message);
-    });
-  }
-
-  res.status(200).json({ message: "✅ Course deleted successfully" });
-});
+    res.status(200).json({ message: "✅ Course deleted successfully" });
+  },
+);
 
 //Updating A course
-export const updateCourse = asyncHandler(async (req: UserRequest, res: Response) => {
-  const courseId = parseInt(req.params.id);
-  //console.log('BODY:', req.body);
-  //console.log('FILE:', req.file);
+export const updateCourse = asyncHandler(
+  async (req: UserRequest, res: Response) => {
+    const courseId = parseInt(req.params.id);
+    //console.log('BODY:', req.body);
+    //console.log('FILE:', req.file);
 
-  if (isNaN(courseId)) {
-    res.status(400).json({ message: "Invalid course ID" });
-    return;
-  }
+    if (isNaN(courseId)) {
+      res.status(400).json({ message: "Invalid course ID" });
+      return;
+    }
 
-  if (!req.user) {
-    res.status(401).json({ message: "Not Authorized" });
-    return;
-  }
+    if (!req.user) {
+      res.status(401).json({ message: "Not Authorized" });
+      return;
+    }
 
-  const { title, description, price } = req.body;
+    const { title, description, price } = req.body;
 
-  if (!title || !description || !price) {
-    res.status(400).json({ message: "All fields are required" });
-    return;
-  }
+    if (!title || !description || !price) {
+      res.status(400).json({ message: "All fields are required" });
+      return;
+    }
 
-  // Fetch existing course
-  const courseResult = await pool.query("SELECT * FROM public.course WHERE id = $1", [courseId]);
-  if (courseResult.rowCount === 0) {
-    res.status(404).json({ message: "Course not found" });
-    return;
-  }
+    // Fetch existing course
+    const courseResult = await pool.query(
+      "SELECT * FROM public.course WHERE id = $1",
+      [courseId],
+    );
+    if (courseResult.rowCount === 0) {
+      res.status(404).json({ message: "Course not found" });
+      return;
+    }
 
-  const course = courseResult.rows[0];
+    const course = courseResult.rows[0];
 
-  // Authorization
-  if (
-    req.user.role_name !== "Admin" &&
-    !(req.user.role_name === "Teacher" && req.user.id === course.teacherId)
-  ) {
-    res.status(403).json({ message: "Access Denied: You cannot update this course" });
-    return;
-  }
+    // Authorization
+    if (
+      req.user.role_name !== "Admin" &&
+      !(req.user.role_name === "Teacher" && req.user.id === course.teacherId)
+    ) {
+      res
+        .status(403)
+        .json({ message: "Access Denied: You cannot update this course" });
+      return;
+    }
 
-  // If a new image file was uploaded
-  let imageUrl = course.imageUrl; // Keep the old one by default
-  if (req.file) {
-    imageUrl = `/uploads/courses/${req.file.filename}`;
-  }
+    // If a new image file was uploaded
+    let imageUrl = course.imageUrl; // Keep the old one by default
+    if (req.file) {
+      imageUrl = `/uploads/courses/${req.file.filename}`;
+    }
 
-  const updatedCourseResult = await pool.query(
-    `UPDATE public.course 
+    const updatedCourseResult = await pool.query(
+      `UPDATE public.course 
      SET title = $1, description = $2, price = $3, "imageUrl" = $4 
      WHERE id = $5 
      RETURNING *`,
-    [title, description, price, imageUrl, courseId]
-  );
+      [title, description, price, imageUrl, courseId],
+    );
 
-  res.status(200).json({
-    message: "✅ Course updated successfully",
-    course: updatedCourseResult.rows[0],
-  });
-});
-
-
-
-
-
+    res.status(200).json({
+      message: "✅ Course updated successfully",
+      course: updatedCourseResult.rows[0],
+    });
+  },
+);

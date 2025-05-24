@@ -48,7 +48,7 @@ export const enrollUser = asyncHandler(
     //Check If student already  enrolled
     const queryResult = await pool.query(
       "SELECT FROM public.enrollment WHERE studentId=$1 RETURNING *",
-      [studentId]
+      [studentId],
     );
 
     if (queryResult.rows.length > 0) {
@@ -59,7 +59,7 @@ export const enrollUser = asyncHandler(
     //Insert into enrollment table
     const enrollment = await pool.query(
       `INSERT INTO public.enrollment ("studentId", "courseId") VALUES ($1, $2) RETURNING *`,
-      [studentId, courseId, userId]
+      [studentId, courseId, userId],
     );
 
     res.status(201).json({
@@ -67,8 +67,5 @@ export const enrollUser = asyncHandler(
       enrollment: enrollment.rows[0],
     });
     return;
-  }
+  },
 );
-
-
-

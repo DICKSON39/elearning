@@ -24,6 +24,3 @@ export class Payment {
   @Column({ nullable: true })
   checkoutRequestID?: string;
 }
-
-
-

@@ -1,4 +1,10 @@
-import { Entity, PrimaryGeneratedColumn, ManyToOne, Column, JoinColumn } from "typeorm";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  ManyToOne,
+  Column,
+  JoinColumn,
+} from "typeorm";
 import { User } from "./User";
 import { Course } from "./Course";
 
@@ -11,7 +17,7 @@ export class Certificate {
   student!: User;
 
   @ManyToOne(() => Course, (course) => course.certificates)
-  @JoinColumn({ name: 'courseId' })
+  @JoinColumn({ name: "courseId" })
   course!: Course;
 
   @Column()

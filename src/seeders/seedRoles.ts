@@ -13,11 +13,11 @@ export const createDefaultRoles = async () => {
   try {
     for (const roleData of defaultRoles) {
       const exists = await roleRepo.findOneBy({ name: roleData.name });
-      
+
       if (!exists) {
         const newRole = roleRepo.create(roleData);
         await roleRepo.save(newRole);
-       // console.log(`Role '${roleData.name}' created`);
+        // console.log(`Role '${roleData.name}' created`);
       } else {
         //console.log(`Role '${roleData.name}' already exists`);
       }
@@ -26,4 +26,3 @@ export const createDefaultRoles = async () => {
     console.error("Error creating roles:", error);
   }
 };
-

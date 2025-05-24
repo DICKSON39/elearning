@@ -2,7 +2,13 @@ import { Router } from "express";
 
 import { protect } from "../middlewares/auth/protect";
 import { Admin, AdminOrUser } from "../middlewares/auth/roleMiddleware";
-import { getUserProfile, getUsers, deleteUsers, updateUser, getAllTeachers } from "../controllers/userController";
+import {
+  getUserProfile,
+  getUsers,
+  deleteUsers,
+  updateUser,
+  getAllTeachers,
+} from "../controllers/userController";
 
 const router = Router();
 
@@ -17,8 +23,5 @@ router.delete("/users/:id", protect, Admin, deleteUsers);
 
 //Update a user
 router.put("/users/:id", protect, AdminOrUser, updateUser);
-
-
-
 
 export default router;

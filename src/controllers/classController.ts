@@ -21,7 +21,7 @@ export const createClass = asyncHandler(
       // Check if the course exists and belongs to the teacher
       const courseResult = await pool.query(
         `SELECT id, "teacherId" FROM course WHERE id = $1`, // Use quotes for "teacherId"
-        [courseId]
+        [courseId],
       );
 
       if (
@@ -42,16 +42,14 @@ export const createClass = asyncHandler(
       VALUES ($1, $2, $3, $4, $5)
       RETURNING id, "startTime", "endTime", "meetingLink", "courseId", "isLive", "videoPath"
       `,
-        [startTime, endTime, meetingLink, courseId, videoPath]
+        [startTime, endTime, meetingLink, courseId, videoPath],
       );
 
       if (newClassResult.rows.length > 0) {
-        res
-          .status(201)
-          .json({
-            message: "Class created successfully",
-            class: newClassResult.rows[0],
-          });
+        res.status(201).json({
+          message: "Class created successfully",
+          class: newClassResult.rows[0],
+        });
       } else {
         res.status(500).json({ message: "Failed to create class" });
       }
@@ -59,7 +57,7 @@ export const createClass = asyncHandler(
       console.error("Error creating class:", error);
       res.status(500).json({ message: "Internal server error" });
     }
-  }
+  },
 );
 export const getTeacherClasses = asyncHandler(
   async (req: UserRequest, res: Response) => {
@@ -91,7 +89,7 @@ export const getTeacherClasses = asyncHandler(
       LEFT JOIN course ON class."courseId" = course.id
       WHERE course."teacherId" = $1
       `,
-        [teacherId]
+        [teacherId],
       );
 
       res.status(200).json(classesResult.rows);
@@ -99,7 +97,7 @@ export const getTeacherClasses = asyncHandler(
       console.error("Error fetching teacher's classes:", error);
       res.status(500).json({ message: "Internal server error" });
     }
-  }
+  },
 );
 export const getClassById = asyncHandler(
   async (req: Request, res: Response) => {
@@ -127,7 +125,7 @@ export const getClassById = asyncHandler(
       LEFT JOIN course ON class."courseId" = course.id
       WHERE class.id = $1
       `,
-        [classId]
+        [classId],
       );
 
       if (classResult.rows.length > 0) {
@@ -139,7 +137,7 @@ export const getClassById = asyncHandler(
       console.error("Error fetching class:", error);
       res.status(500).json({ message: "Internal server error" });
     }
-  }
+  },
 );
 export const updateClass = asyncHandler(
   async (req: UserRequest, res: Response) => {
@@ -161,7 +159,7 @@ export const updateClass = asyncHandler(
       JOIN course co ON c."courseId" = co.id
       WHERE c.id = $1 AND co."teacherId" = $2
       `,
-        [classId, teacherId]
+        [classId, teacherId],
       );
       if (classCheckResult.rows.length === 0) {
         res.status(403).json({ message: "Unauthorized to update this class" });
@@ -214,12 +212,10 @@ export const updateClass = asyncHandler(
       const result = await pool.query(updateQuery, values);
 
       if (result.rows.length > 0) {
-        res
-          .status(200)
-          .json({
-            message: "Class updated successfully",
-            class: result.rows[0],
-          });
+        res.status(200).json({
+          message: "Class updated successfully",
+          class: result.rows[0],
+        });
       } else {
         res.status(404).json({ message: `Class with ID ${classId} not found` });
       }
@@ -227,7 +223,7 @@ export const updateClass = asyncHandler(
       console.error("Error updating class:", error);
       res.status(500).json({ message: "Internal server error" });
     }
-  }
+  },
 );
 
 export const deleteClass = asyncHandler(
@@ -248,7 +244,7 @@ export const deleteClass = asyncHandler(
       JOIN course co ON c."courseId" = co.id
       WHERE c.id = $1 AND co."teacherId" = $2
       `,
-        [classId, teacherId]
+        [classId, teacherId],
       );
       if (classCheckResult.rows.length === 0) {
         return res
@@ -262,7 +258,7 @@ export const deleteClass = asyncHandler(
       WHERE id = $1
       RETURNING id
       `,
-        [classId]
+        [classId],
       );
 
       if (result.rows.length > 0) {
@@ -276,42 +272,47 @@ export const deleteClass = asyncHandler(
       console.error("Error deleting class:", error);
       res.status(500).json({ message: "Internal server error" });
     }
-  }
+  },
 );
 
-
-export const getMyPaidClass = asyncHandler(async (req: UserRequest, res: Response) => {
+export const getMyPaidClass = asyncHandler(
+  async (req: UserRequest, res: Response) => {
     const userId = req.user?.id;
     const { courseId, classId } = req.body; // Added classId
 
     if (!userId) {
-        res.status(401).json({ message: "Not Authorized" });
-        return;
+      res.status(401).json({ message: "Not Authorized" });
+      return;
     }
 
     // Check if the user has paid for the course
-    const isCoursePaid = await pool.query(`SELECT * FROM public.payment WHERE "userId"=$1 AND "courseId"=$2`, [userId, courseId]);
+    const isCoursePaid = await pool.query(
+      `SELECT * FROM public.payment WHERE "userId"=$1 AND "courseId"=$2`,
+      [userId, courseId],
+    );
 
-    if (isCoursePaid.rows.length === 0) { // Corrected check
-        res.status(409).json({ message: "You have not paid for the course" });
-        return;
+    if (isCoursePaid.rows.length === 0) {
+      // Corrected check
+      res.status(409).json({ message: "You have not paid for the course" });
+      return;
     }
 
     // Check if the user is enrolled in the course
     const enrolled = await pool.query(
-        `SELECT * FROM public.enrollment WHERE "studentId" = $1 AND "courseId" = $2`,
-        [userId, courseId]
+      `SELECT * FROM public.enrollment WHERE "studentId" = $1 AND "courseId" = $2`,
+      [userId, courseId],
     );
 
-    if (enrolled.rows.length === 0) { // Corrected check
-        res.status(409).json({ message: "You must be enrolled in this course." });
-        return;
+    if (enrolled.rows.length === 0) {
+      // Corrected check
+      res.status(409).json({ message: "You must be enrolled in this course." });
+      return;
     }
 
     // Now Get the Class
     try {
-        const classResult = await pool.query(
-            `
+      const classResult = await pool.query(
+        `
                 SELECT
                     class.id,
                     class."startTime",
@@ -326,34 +327,36 @@ export const getMyPaidClass = asyncHandler(async (req: UserRequest, res: Respons
                          LEFT JOIN course ON class."courseId" = course.id
                 WHERE class.id = $1
             `,
-            [classId]
-        );
+        [classId],
+      );
 
-        if (classResult.rows.length > 0) {
-            res.status(200).json(classResult.rows[0]);
-        } else {
-            res.status(404).json({ message: `Class with ID ${classId} not found` });
-        }
+      if (classResult.rows.length > 0) {
+        res.status(200).json(classResult.rows[0]);
+      } else {
+        res.status(404).json({ message: `Class with ID ${classId} not found` });
+      }
     } catch (error) {
-        console.error("Error fetching class:", error);
-        res.status(500).json({ message: "Internal server error" });
+      console.error("Error fetching class:", error);
+      res.status(500).json({ message: "Internal server error" });
     }
-});
+  },
+);
 
 // NEW BACKEND ENDPOINT: To get the single latest paid class for a student
-export const getLatestPaidClassForStudent = asyncHandler(async (req: UserRequest, res: Response) => {
+export const getLatestPaidClassForStudent = asyncHandler(
+  async (req: UserRequest, res: Response) => {
     const userId = req.user?.id;
 
     if (!userId) {
-        res.status(401).json({ message: "Not Authorized" });
-        return;
+      res.status(401).json({ message: "Not Authorized" });
+      return;
     }
 
     try {
-        // This query finds the latest (most recent startTime) class
-        // that the user has paid for and is enrolled in.
-        const result = await pool.query(
-            `
+      // This query finds the latest (most recent startTime) class
+      // that the user has paid for and is enrolled in.
+      const result = await pool.query(
+        `
             SELECT
                 c.id AS class_id,
                 c."courseId"
@@ -372,19 +375,19 @@ export const getLatestPaidClassForStudent = asyncHandler(async (req: UserRequest
             ORDER BY c."startTime" DESC -- Orders by start time descending to get the latest
             LIMIT 1; -- Retrieves only the top (latest) one
             `,
-            [userId]
-        );
+        [userId],
+      );
 
-        if (result.rows.length > 0) {
-            res.status(200).json(result.rows[0]); // Return the single class_id and courseId
-        } else {
-            res.status(404).json({ message: "No paid classes found for this student to join." });
-        }
-
+      if (result.rows.length > 0) {
+        res.status(200).json(result.rows[0]); // Return the single class_id and courseId
+      } else {
+        res
+          .status(404)
+          .json({ message: "No paid classes found for this student to join." });
+      }
     } catch (error) {
-        console.error("Error fetching latest paid class for student:", error);
-        res.status(500).json({ message: "Internal server error" });
+      console.error("Error fetching latest paid class for student:", error);
+      res.status(500).json({ message: "Internal server error" });
     }
-})
-
-
+  },
+);

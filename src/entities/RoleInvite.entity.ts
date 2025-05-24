@@ -1,22 +1,28 @@
 // invite-code.entity.ts
-import { Entity, PrimaryGeneratedColumn, Column, ManyToOne, JoinColumn } from "typeorm";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToOne,
+  JoinColumn,
+} from "typeorm";
 import { Role } from "./Role";
 
 @Entity()
 export class InviteCode {
-    @PrimaryGeneratedColumn()
-    id!: number;
+  @PrimaryGeneratedColumn()
+  id!: number;
 
-    @Column({ unique: true })
-    code!: string;
+  @Column({ unique: true })
+  code!: string;
 
-    @ManyToOne(() => Role)
-    @JoinColumn({ name: 'roleId' })
-    role!: Role;
+  @ManyToOne(() => Role)
+  @JoinColumn({ name: "roleId" })
+  role!: Role;
 
-    @Column()
-    roleId!: number;
+  @Column()
+  roleId!: number;
 
-    @Column({ default: false })
-    isUsed!: boolean;
+  @Column({ default: false })
+  isUsed!: boolean;
 }

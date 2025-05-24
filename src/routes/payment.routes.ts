@@ -6,7 +6,8 @@ import {
   getPaymentDetails,
   getPayments,
   getStudentPayments,
-  makePayment, mpesaCallback,
+  makePayment,
+  mpesaCallback,
 } from "../controllers/paymentController";
 import { Admin } from "../middlewares/auth/roleMiddleware";
 import Stripe from "stripe";
@@ -20,8 +21,6 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 });
 
 const router = express.Router();
-
-
 
 // 🟢 Create a PaymentIntent and return client_secret
 router.post("/create-payment-intent", protect, async (req, res) => {
@@ -48,7 +47,7 @@ router.post("/create-payment-intent", protect, async (req, res) => {
 });
 router.post("/:userId/confirmPayment", protect, confirmPayment);
 router.post("/payment/make-payment", protect, makePayment);
-router.post('/callback',protect,mpesaCallback);
+router.post("/callback", protect, mpesaCallback);
 router.get("/:userId/payments", protect, getPayments);
 router.get("/:userId/payment/:paymentId", protect, getPaymentById);
 router.get("/payment-info", protect, Admin, getPaymentDetails);
