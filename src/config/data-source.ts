@@ -35,5 +35,7 @@ export const AppDataSource = new DataSource({
     InviteCode,
   ],
 
-  ssl: false,
+  ssl: {
+      rejectUnauthorized: false,
+   }
 });

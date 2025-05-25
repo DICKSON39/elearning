@@ -222,9 +222,11 @@ export const getAllTeachers = asyncHandler(
         id: row.id,
         name: row.name,
         email: row.email,
-        roleId: row.role_id,
+        role_name: row.role_name,
       })),
     });
+
+
   },
 );
 export const getTeacherById = asyncHandler(
@@ -267,8 +269,13 @@ export const getAllStudents = asyncHandler(
     WHERE r.name = 'Student'`);
 
     res.status(200).json({
-      message: " Student successfully",
-      data: result.rows,
+      items: result.rows.map((row) => ({
+        id: row.id,
+        name: row.name,
+        email: row.email,
+        role_name: row.role_name,
+      })),
     });
+    ;
   },
 );
