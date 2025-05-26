@@ -63,7 +63,7 @@ export const createClass = asyncHandler(
                 )}`;
 
                 const { data, error } = await supabase.storage
-                    .from("videos")
+                    .from("myfiles")
                     .upload(uniqueFilename, file.buffer, {
                         contentType: file.mimetype,
                     });
@@ -73,7 +73,7 @@ export const createClass = asyncHandler(
                 }
 
                 const { data: publicUrlData } = supabase.storage
-                    .from("videos")
+                    .from("myfiles")
                     .getPublicUrl(uniqueFilename);
 
                 await pool.query(
@@ -96,8 +96,9 @@ export const createClass = asyncHandler(
                  res
                     .status(500)
                     .json({ message: "Internal server error", error: error.message });
+                     return
             }
-            return
+           
 
              res.status(500).json({
                 message: "Internal server error",
