@@ -35,5 +35,7 @@ export const AppDataSource = new DataSource({
       Video
   ],
 
-  ssl: false
+  ssl: {
+    rejectUnauthorized: false, // allow self-signed certs if needed
+  }
 });
