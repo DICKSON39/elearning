@@ -225,8 +225,6 @@ export const getAllTeachers = asyncHandler(
         role_name: row.role_name,
       })),
     });
-
-
   },
 );
 export const getTeacherById = asyncHandler(
@@ -276,6 +274,5 @@ export const getAllStudents = asyncHandler(
         role_name: row.role_name,
       })),
     });
-    ;
   },
 );

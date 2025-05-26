@@ -7,6 +7,7 @@ import {
 } from "typeorm";
 import { Course } from "./Course";
 import { Attendance } from "./Attendance";
+import { Video } from "./Video";
 
 @Entity()
 export class Class {
@@ -16,20 +17,19 @@ export class Class {
   @ManyToOne(() => Course, (course) => course.classes)
   course!: Course;
 
-  @Column()
+  @Column({type: "timestamp"})
   startTime!: Date;
 
-  @Column()
+  @Column({type: "timestamp"})
   endTime!: Date;
-
-  @Column()
-  meetingLink!: string;
 
   @OneToMany(() => Attendance, (attendance) => attendance.classSession)
   attendances!: Attendance[];
-  @Column({ default: false })
-  isLive!: boolean; // Whether the class is currently live
 
-  @Column({ nullable: true })
-  videoPath?: string;
+  @OneToMany(() => Video, (video) => video.classSession, {cascade: true})
+  videos!: Video[];
 }
+
+
+
+

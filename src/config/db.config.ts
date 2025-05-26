@@ -6,12 +6,11 @@ dotenv.config();
 const pool = new Pool({
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT),
+  connectionString: process.env.DATABASE_URL, // Use DATABASE_URL for Heroku or other platforms
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  ssl: {
-    rejectUnauthorized: false,
-  },
+  ssl: false
 });
 
 // console.log(process.env.DB_USER)

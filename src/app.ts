@@ -13,6 +13,7 @@ import paymentRoutes from "./routes/payment.routes";
 import enrollmentRoutes from "./routes/enrollment.routes";
 // import { seedInviteCodes } from "./seeders/inviteCode.seed";
 import dashRoutes from "./routes/analytics.routes";
+//import { createDefaultRoles } from "./seeders/seedRoles";
 
 dotenv.config();
 
@@ -23,7 +24,6 @@ app.use(express.json());
 app.use(morgan("dev"));
 
 const allowedOrigins = ["https://online-courses-gamma.vercel.app"];
-
 
 app.use(
   cors({
@@ -55,11 +55,6 @@ app.use(
   express.static(path.join(process.cwd(), "uploads", "courses")),
 );
 
-app.get("/test-upload", (req, res) => {
-  res.sendFile(
-    path.join(process.cwd(), "uploads", "courses", "1747831219824-image.png"),
-  );
-});
 
 app.get("/", (req, res) => {
   res.send("Hello World!");
@@ -77,6 +72,8 @@ AppDataSource.initialize().then(async () => {
   console.log(`Data source has been initialized`);
 
   //await seedInviteCodes();
+  // await createDefaultRoles();
+  
 
   app.listen(PORT, () => console.log(`✅✅Port 👌👌👌is running at ${PORT} `));
 });

@@ -11,6 +11,7 @@ import { Class } from "../entities/Class";
 import dotenv from "dotenv";
 import { Certificate } from "../entities/Certificate";
 import { InviteCode } from "../entities/RoleInvite.entity";
+import {Video} from "../entities/Video";
 
 dotenv.config();
 
@@ -21,6 +22,7 @@ export const AppDataSource = new DataSource({
   username: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
+  url: process.env.DATABASE_URL, 
   synchronize: true,
   logging: false,
   entities: [
@@ -33,9 +35,8 @@ export const AppDataSource = new DataSource({
     Course,
     Class,
     InviteCode,
+      Video
   ],
 
-  ssl: {
-      rejectUnauthorized: false,
-   }
+  ssl: false
 });

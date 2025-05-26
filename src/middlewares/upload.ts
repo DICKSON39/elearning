@@ -1,30 +1,17 @@
 import multer from "multer";
-import path from "path";
-import fs from "fs";
 
-// Use process.cwd() to get project root, not __dirname (which points inside src)
-const uploadPath = path.join(process.cwd(), "uploads", "courses");
-
-// Make sure upload folder exists, create it if not
-if (!fs.existsSync(uploadPath)) {
-  fs.mkdirSync(uploadPath, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, uploadPath); // Absolute path from project root
-  },
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}-${file.fieldname}${ext}`);
-  },
-});
+// Use memory storage to buffer files for direct upload to Supabase
+const storage = multer.memoryStorage();
 
 const fileFilter = (req: any, file: Express.Multer.File, cb: any) => {
-  if (file.mimetype.startsWith("image")) {
+  // Allow only image and video MIME types
+  const allowedTypes = ["image/", "video/"]; // add slash to be precise
+  const isAllowed = allowedTypes.some((type) => file.mimetype.startsWith(type));
+
+  if (isAllowed) {
     cb(null, true);
   } else {
-    cb(new Error("Only image files are allowed!"), false);
+    cb(new Error("Only image and video files are allowed!"), false);
   }
 };
 
