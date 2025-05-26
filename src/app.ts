@@ -69,5 +69,5 @@ AppDataSource.initialize().then(async () => {
   // await createDefaultRoles();
   
 
-  app.listen(PORT, () => console.log(`✅✅Port 👌👌👌is running at ${PORT} `));
+  app.listen(PORT, () => console.log(`✅✅Port 👌👌👌is running `));
 });

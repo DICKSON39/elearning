@@ -20,7 +20,7 @@ export const createCourse = async (req: Request, res: Response) => {
       const filePath = `courses/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
-        .from("your-bucket-name")
+        .from("myfiles")
         .upload(filePath, req.file.buffer, {
           contentType: req.file.mimetype,
         });
@@ -28,7 +28,7 @@ export const createCourse = async (req: Request, res: Response) => {
       if (uploadError) throw uploadError;
 
       const { data } = supabase.storage
-        .from("your-bucket-name")
+        .from("myfiles")
         .getPublicUrl(filePath);
 
       imageUrl = data.publicUrl;
@@ -221,7 +221,7 @@ export const deleteCourse = asyncHandler(
   const filePath = course.imageurl.split("/").slice(-2).join("/"); // extract `folder/filename`
 
   const { error: deleteError } = await supabase.storage
-    .from("your-bucket-name")
+    .from("myfiles")
     .remove([filePath]);
 
   if (deleteError) console.error("Error deleting image from Supabase:", deleteError);
@@ -279,7 +279,7 @@ export const updateCourse = asyncHandler(async (req: UserRequest, res: Response)
     // 1. Delete old image if exists
     if (imageUrl) {
       const oldPath = imageUrl.split("/").slice(-2).join("/"); // "folder/filename"
-      await supabase.storage.from("your-bucket-name").remove([oldPath]);
+      await supabase.storage.from("myfiles").remove([oldPath]);
     }
 
     // 2. Upload new image
@@ -288,7 +288,7 @@ export const updateCourse = asyncHandler(async (req: UserRequest, res: Response)
     const filePath = `courses/${fileName}`;
 
     const { error: uploadError } = await supabase.storage
-      .from("your-bucket-name")
+      .from("myfiles")
       .upload(filePath, req.file.buffer, {
         contentType: req.file.mimetype,
       });
@@ -300,7 +300,7 @@ export const updateCourse = asyncHandler(async (req: UserRequest, res: Response)
     }
 
     const { data } = supabase.storage
-      .from("your-bucket-name")
+      .from("myfiles")
       .getPublicUrl(filePath);
 
     imageUrl = data.publicUrl;
