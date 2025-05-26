@@ -4,58 +4,47 @@ import { UserRequest } from "../utils/types/user";
 import pool from "../config/db.config";
 import path from "path";
 import fs from "fs";
+ 
+import { v4 as uuid } from "uuid"; // for unique filenames
+import { supabase } from "../utils/supabaseClient";
 
-export const CreateCourse = asyncHandler(
-  async (req: UserRequest, res: Response) => {
-    // console.log("Reached create course");
-    // console.log("BODY:", req.body);
-    // console.log("FILE:", req.file);
+export const createCourse = async (req: Request, res: Response) => {
+  try {
+    const { title, description, teacher_id } = req.body;
 
-    if (!req.user) {
-      res.status(401).json({ message: "Not Authorized" });
-      return;
+    let imageUrl = null;
+
+    if (req.file) {
+      const fileExt = req.file.originalname.split(".").pop();
+      const fileName = `${uuid()}.${fileExt}`;
+      const filePath = `courses/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("your-bucket-name")
+        .upload(filePath, req.file.buffer, {
+          contentType: req.file.mimetype,
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from("your-bucket-name")
+        .getPublicUrl(filePath);
+
+      imageUrl = data.publicUrl;
     }
-
-    //console.log("User:", req.user);
-
-    const { title, description, price, teacherId } = req.body;
-
-    // Validate if all fields are provided, including the file
-    if (!title || !description || !price || !teacherId || !req.file) {
-      res
-        .status(400)
-        .json({ message: "All fields including image are required" });
-      return;
-    }
-
-    // Ensure teacherId is valid (positive integer)
-    if (isNaN(teacherId) || teacherId <= 0) {
-      res.status(400).json({ message: "Invalid teacher ID" });
-      return;
-    }
-
-    // Check user role for authorization
-    if (req.user.role_name !== "Teacher" && req.user.role_name !== "Admin") {
-      res.status(403).json({ message: "Access Denied" });
-      return;
-    }
-
-    // Store the file path (ensure the correct image URL path)
-    const imageUrl = `/uploads/courses/${req.file.filename}`;
 
     const result = await pool.query(
-      `INSERT INTO public.course (title, description, price, "teacherId", "imageUrl") 
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [title, description, price, teacherId, imageUrl],
+      "INSERT INTO courses (title, description, teacher_id, imageUrl) VALUES ($1, $2, $3, $4) RETURNING *",
+      [title, description, teacher_id, imageUrl]
     );
 
-    res.status(201).json({
-      message: "✅ Course added successfully",
-      course: result.rows[0],
-    });
-    return;
-  },
-);
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error("Error creating course:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+}
 
 export const getCoursesById = asyncHandler(
   async (req: Request, res: Response) => {
@@ -228,12 +217,15 @@ export const deleteCourse = asyncHandler(
     await pool.query(`DELETE FROM public.course WHERE id = $1`, [courseId]);
 
     // Optionally delete the image file from disk
-    if (course.imageUrl) {
-      const imagePath = path.join(__dirname, "../../..", course.imageUrl);
-      fs.unlink(imagePath, (err) => {
-        if (err) console.warn("Failed to delete image:", err.message);
-      });
-    }
+   if (course.imageurl) {
+  const filePath = course.imageurl.split("/").slice(-2).join("/"); // extract `folder/filename`
+
+  const { error: deleteError } = await supabase.storage
+    .from("your-bucket-name")
+    .remove([filePath]);
+
+  if (deleteError) console.error("Error deleting image from Supabase:", deleteError);
+}
 
     res.status(200).json({ message: "✅ Course deleted successfully" });
   },

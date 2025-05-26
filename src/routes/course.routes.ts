@@ -3,7 +3,8 @@ import { protect } from "../middlewares/auth/protect";
 import { Admin, AdminOrTeacher } from "../middlewares/auth/roleMiddleware";
 import { upload } from "../middlewares/upload";
 import {
-  CreateCourse,
+  
+  createCourse,
   deleteCourse,
   getAllCourse,
   getAllCourseTeacher,
@@ -13,7 +14,7 @@ import {
 
 const router = Router();
 
-router.post("/", protect, Admin, upload.single("image"), CreateCourse);
+router.post("/", protect, Admin, upload.single("image"), createCourse);
 router.get("/courses/:courseId", protect, getCoursesById);
 router.delete("/courses/:id", protect, AdminOrTeacher, deleteCourse);
 router.get("/", getAllCourse);
