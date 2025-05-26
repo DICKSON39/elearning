@@ -232,69 +232,90 @@ export const deleteCourse = asyncHandler(
 );
 
 //Updating A course
-export const updateCourse = asyncHandler(
-  async (req: UserRequest, res: Response) => {
-    const courseId = parseInt(req.params.id);
-    //console.log('BODY:', req.body);
-    //console.log('FILE:', req.file);
+export const updateCourse = asyncHandler(async (req: UserRequest, res: Response) => {
+  const courseId = parseInt(req.params.id);
 
-    if (isNaN(courseId)) {
-      res.status(400).json({ message: "Invalid course ID" });
-      return;
+  if (isNaN(courseId)) {
+     res.status(400).json({ message: "Invalid course ID" });
+     return
+  }
+
+  if (!req.user) {
+     res.status(401).json({ message: "Not Authorized" });
+     return
+  }
+
+  const { title, description, price } = req.body;
+
+  if (!title || !description || !price) {
+     res.status(400).json({ message: "All fields are required" });
+     return
+  }
+
+  const courseResult = await pool.query(
+    "SELECT * FROM public.course WHERE id = $1",
+    [courseId]
+  );
+
+  if (courseResult.rowCount === 0) {
+     res.status(404).json({ message: "Course not found" });
+     return
+  }
+
+  const course = courseResult.rows[0];
+
+  // Authorization check
+  if (
+    req.user.role_name !== "Admin" &&
+    !(req.user.role_name === "Teacher" && req.user.id === course.teacherid)
+  ) {
+     res.status(403).json({ message: "Access Denied: You cannot update this course" });
+     return
+  }
+
+  let imageUrl = course.imageurl;
+
+  if (req.file) {
+    // 1. Delete old image if exists
+    if (imageUrl) {
+      const oldPath = imageUrl.split("/").slice(-2).join("/"); // "folder/filename"
+      await supabase.storage.from("your-bucket-name").remove([oldPath]);
     }
 
-    if (!req.user) {
-      res.status(401).json({ message: "Not Authorized" });
-      return;
+    // 2. Upload new image
+    const fileExt = req.file.originalname.split(".").pop();
+    const fileName = `${uuid()}.${fileExt}`;
+    const filePath = `courses/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("your-bucket-name")
+      .upload(filePath, req.file.buffer, {
+        contentType: req.file.mimetype,
+      });
+
+    if (uploadError) {
+      console.error("Supabase upload error:", uploadError.message);
+       res.status(500).json({ message: "Image upload failed" });
+       return
     }
 
-    const { title, description, price } = req.body;
+    const { data } = supabase.storage
+      .from("your-bucket-name")
+      .getPublicUrl(filePath);
 
-    if (!title || !description || !price) {
-      res.status(400).json({ message: "All fields are required" });
-      return;
-    }
+    imageUrl = data.publicUrl;
+  }
 
-    // Fetch existing course
-    const courseResult = await pool.query(
-      "SELECT * FROM public.course WHERE id = $1",
-      [courseId],
-    );
-    if (courseResult.rowCount === 0) {
-      res.status(404).json({ message: "Course not found" });
-      return;
-    }
-
-    const course = courseResult.rows[0];
-
-    // Authorization
-    if (
-      req.user.role_name !== "Admin" &&
-      !(req.user.role_name === "Teacher" && req.user.id === course.teacherId)
-    ) {
-      res
-        .status(403)
-        .json({ message: "Access Denied: You cannot update this course" });
-      return;
-    }
-
-    // If a new image file was uploaded
-    let imageUrl = course.imageUrl; // Keep the old one by default
-    if (req.file) {
-      imageUrl = `/uploads/courses/${req.file.filename}`;
-    }
-
-    const updatedCourseResult = await pool.query(
-      `UPDATE public.course 
+  const updatedCourseResult = await pool.query(
+    `UPDATE public.course 
      SET title = $1, description = $2, price = $3, "imageUrl" = $4 
      WHERE id = $5 
      RETURNING *`,
-      [title, description, price, imageUrl, courseId],
-    );
+    [title, description, price, imageUrl, courseId]
+  );
 
-    res.status(200).json({
-      message: "✅ Course updated successfully",
-      course: updatedCourseResult.rows[0],
-    });
-  },
-);
+  res.status(200).json({
+    message: "✅ Course updated successfully",
+    course: updatedCourseResult.rows[0],
+  });
+});
