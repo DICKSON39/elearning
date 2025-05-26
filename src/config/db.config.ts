@@ -4,18 +4,15 @@ import { Pool } from "pg";
 dotenv.config();
 
 const pool = new Pool({
-  host: process.env.DB_HOST,
+  
   port: Number(process.env.DB_PORT),
-  connectionString: process.env.DATABASE_URL, // Use DATABASE_URL for Heroku or other platforms
+  connectionString: process.env.DATABASE_URL, 
+  keepAlive: true,
   
   ssl: {
     rejectUnauthorized: false, // allow self-signed certs if needed
   }
 });
 
-// console.log(process.env.DB_USER)
-// console.log(process.env.DB_PASSWORD)
-// console.log(process.env.DB_PORT)
-// console.log(process.env.DB_HOST)
 
 export default pool;
