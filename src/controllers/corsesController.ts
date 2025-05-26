@@ -35,7 +35,7 @@ export const createCourse = async (req: Request, res: Response) => {
     }
 
     const result = await pool.query(
-      "INSERT INTO public.course (title, description, teacher_id, imageUrl) VALUES ($1, $2, $3, $4) RETURNING *",
+      `INSERT INTO public.course (title, description, "teacherId", "imageUrl") VALUES ($1, $2, $3, $4) RETURNING *`,
       [title, description, teacher_id, imageUrl]
     );
 
