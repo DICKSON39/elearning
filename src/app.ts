@@ -50,15 +50,9 @@ app.use("/api/v1/payment", paymentRoutes);
 app.use("/api/v1/enrollment", enrollmentRoutes);
 app.use("/api/v1/dashboard", dashRoutes);
 
-app.use(
-  "/uploads/courses",
-  express.static(path.join(process.cwd(), "uploads", "courses")),
-);
 
 
-app.get("/", (req, res) => {
-  res.send("Hello World!");
-});
+
 
 //console.log("Static image path:", path.join(__dirname, 'uploads', 'courses'));
 // Log incoming requests (for debugging)
