@@ -5,7 +5,7 @@ dotenv.config();
 
 const pool = new Pool({
   
-  port: Number(process.env.DB_PORT),
+  port: Number(process.env.PORT),
   connectionString: process.env.DATABASE_URL, 
   keepAlive: true,
   
