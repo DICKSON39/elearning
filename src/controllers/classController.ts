@@ -15,15 +15,21 @@ import { title } from "process";
 export const createClass = asyncHandler(async (req: UserRequest, res: Response) => {
   const teacherId = req.user?.id;
   const { courseId, Description } = req.body;
+  const titles = req.body.titles;
 
   if (!teacherId) {
-    res.status(401).json({ message: "Unauthorized - User not authenticated" });
-    return;
+     res.status(401).json({ message: "Unauthorized - User not authenticated" });
+     return
   }
 
   if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
      res.status(400).json({ message: "Please upload one or more videos." });
-     return;
+     return
+  }
+
+  if (!titles || (Array.isArray(titles) && titles.length !== req.files.length)) {
+    res.status(400).json({ message: "Please provide a title for each video." });
+    return
   }
 
   try {
@@ -35,7 +41,7 @@ export const createClass = asyncHandler(async (req: UserRequest, res: Response) 
 
     if (courseResult.rows.length === 0 || courseResult.rows[0].teacherId !== teacherId) {
        res.status(403).json({ message: "Unauthorized to create class for this course" });
-       return;
+       return
     }
 
     // Insert new class
@@ -45,9 +51,14 @@ export const createClass = asyncHandler(async (req: UserRequest, res: Response) 
     );
 
     const classId = newClassResult.rows[0].id;
+    const files = req.files as Express.Multer.File[];
 
-    // Upload videos to Supabase
-    const uploadPromises = (req.files as Express.Multer.File[]).map(async (file) => {
+    // Normalize titles array in case it's a single string
+    const titlesArray = Array.isArray(titles) ? titles : [titles];
+
+    // Upload videos with their matching titles
+    const uploadPromises = files.map(async (file, index) => {
+      const title = titlesArray[index] || file.originalname;
       const uniqueFilename = `classes/${classId}/${uuidv4()}${path.extname(file.originalname)}`;
 
       const { error } = await supabase.storage
@@ -66,7 +77,7 @@ export const createClass = asyncHandler(async (req: UserRequest, res: Response) 
 
       await pool.query(
         `INSERT INTO video ("url", "title", "classSessionId") VALUES ($1, $2, $3)`,
-        [publicUrlData.publicUrl, file.originalname, classId]
+        [publicUrlData.publicUrl, title, classId]
       );
     });
 
@@ -84,6 +95,7 @@ export const createClass = asyncHandler(async (req: UserRequest, res: Response) 
     });
   }
 });
+
 
 
 
