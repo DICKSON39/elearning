@@ -8,13 +8,14 @@ import { supabase } from "../utils/supabaseClient"; // update with your actual p
 import { asyncHandler } from "../middlewares/asyncHandler";
 import pool from "../config/db.config";
 import { UserRequest } from "../utils/types/user";
+import { title } from "process";
 ;
 
 
 export const createClass = asyncHandler(
     async (req: UserRequest, res: Response) => {
         const teacherId = req.user?.id;
-        const { courseId, startTime, endTime } = req.body;
+        const { courseId, Description,  } = req.body;
 
         if (!teacherId) {
              res.status(401).json({ message: "Unauthorized - User not authenticated" });
@@ -45,8 +46,8 @@ export const createClass = asyncHandler(
 
             // Insert new class
             const newClassResult = await pool.query(
-                `INSERT INTO class ("startTime", "endTime", "courseId") VALUES ($1, $2, $3) RETURNING id`,
-                [startTime, endTime, courseId]
+                `INSERT INTO class ( "Description", "courseId") VALUES ($1, $2, $3) RETURNING id`,
+                [Description,  courseId]
             );
 
             if (newClassResult.rows.length === 0) {
@@ -77,8 +78,8 @@ export const createClass = asyncHandler(
                     .getPublicUrl(uniqueFilename);
 
                 await pool.query(
-                    `INSERT INTO video ("url", "classSessionId") VALUES ($1, $2)`,
-                    [publicUrlData.publicUrl, classId]
+                    `INSERT INTO video ("url", "title", "classSessionId") VALUES ($1, $2)`,
+                    [publicUrlData.publicUrl,title, classId]
                 );
             });
 
@@ -119,7 +120,7 @@ export const getTeacherClasses = asyncHandler(async (req: UserRequest, res: Resp
     const classQuery = `
       SELECT class.*, course.name AS course_name
       FROM class
-      INNER JOIN course ON class.courseId = course.id
+      INNER JOIN course ON class."courseId" = course.id
       WHERE course.teacherId = $1
       ORDER BY class.startTime ASC
     `;
@@ -177,7 +178,7 @@ export const updateClass = asyncHandler(async (req:UserRequest, res:Response) =>
     const teacherId = req.user?.id;
     if (!teacherId) return res.status(401).json({ message: "Unauthorized" });
 
-    const { courseId, startTime, endTime } = req.body;
+    const { courseId, Description } = req.body;
 
     try {
         // Check ownership
@@ -194,12 +195,12 @@ export const updateClass = asyncHandler(async (req:UserRequest, res:Response) =>
         const updateQuery = `
       UPDATE class SET 
         courseId = COALESCE($1, courseId),
-        startTime = COALESCE($2, startTime),
-        endTime = COALESCE($3, endTime)
+        description = COALESCE($2, Description),
+        
       WHERE id = $4
       RETURNING *
     `;
-        const { rows } = await pool.query(updateQuery, [courseId, startTime, endTime, classId]);
+        const { rows } = await pool.query(updateQuery, [courseId, Description,  classId]);
 
         res.status(200).json({ message: "Class updated", class: rows[0] });
     } catch (error) {

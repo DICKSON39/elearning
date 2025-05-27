@@ -17,11 +17,12 @@ export class Class {
   @ManyToOne(() => Course, (course) => course.classes)
   course!: Course;
 
-  @Column({type: "timestamp"})
-  startTime!: Date;
+  @Column()
+  Description!:string;
 
-  @Column({type: "timestamp"})
-  endTime!: Date;
+  
+
+  
 
   @OneToMany(() => Attendance, (attendance) => attendance.classSession)
   attendances!: Attendance[];
