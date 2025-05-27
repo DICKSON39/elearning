@@ -27,10 +27,7 @@ export const createClass = asyncHandler(async (req: UserRequest, res: Response) 
      return
   }
 
-  if (!titles || (Array.isArray(titles) && titles.length !== req.files.length)) {
-    res.status(400).json({ message: "Please provide a title for each video." });
-    return
-  }
+  
 
   try {
     // Check course ownership
