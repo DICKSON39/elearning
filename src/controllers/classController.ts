@@ -118,11 +118,11 @@ export const getTeacherClasses = asyncHandler(async (req: UserRequest, res: Resp
   try {
     // Get all classes with their course name
     const classQuery = `
-      SELECT class.*, course.name AS course_name
-      FROM class
-      INNER JOIN course ON class."courseId" = course.id
-      WHERE course.teacherId = $1
-      ORDER BY class.startTime ASC
+      SELECT class.*, course.name AS course_name 
+  FROM class 
+  INNER JOIN course ON class."courseId" = course.id 
+  WHERE course."teacherId" = $1
+  ORDER BY class."courseId" ASC
     `;
 
     const { rows: classes } = await pool.query(classQuery, [teacherId]);
