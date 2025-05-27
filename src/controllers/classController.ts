@@ -110,26 +110,42 @@ export const createClass = asyncHandler(
 );
 
 
-export const getTeacherClasses = asyncHandler(async (req:UserRequest, res:Response) => {
-    const teacherId = req.user?.id;
-    if (!teacherId) return res.status(401).json({ message: "Unauthorized" });
+export const getTeacherClasses = asyncHandler(async (req: UserRequest, res: Response) => {
+  const teacherId = req.user?.id;
+  if (!teacherId) return res.status(401).json({ message: "Unauthorized" });
 
-    const query = `
-    SELECT class.*, course.name AS course_name 
-    FROM class 
-    INNER JOIN course ON class.courseId = course.id 
-    WHERE course.teacherId = $1
-    ORDER BY class.startTime ASC
-  `;
+  try {
+    // Get all classes with their course name
+    const classQuery = `
+      SELECT class.*, course.name AS course_name
+      FROM class
+      INNER JOIN course ON class.courseId = course.id
+      WHERE course.teacherId = $1
+      ORDER BY class.startTime ASC
+    `;
 
-    try {
-        const { rows } = await pool.query(query, [teacherId]);
-        res.status(200).json(rows);
-    } catch (error) {
-        console.error("Error getting teacher classes:", error);
-        res.status(500).json({ message: "Internal server error" });
-    }
-})
+    const { rows: classes } = await pool.query(classQuery, [teacherId]);
+
+    // For each class, fetch its videos
+    const classWithVideos = await Promise.all(
+      classes.map(async (cls) => {
+        const videoQuery = `SELECT id, title, url FROM video WHERE "classSessionId" = $1`;
+        const { rows: videos } = await pool.query(videoQuery, [cls.id]);
+
+        return {
+          ...cls,
+          videos,
+        };
+      })
+    );
+
+    res.status(200).json(classWithVideos);
+  } catch (error) {
+    console.error("Error getting teacher classes:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 
 
 export const getClassById = asyncHandler(async (req, res) => {
