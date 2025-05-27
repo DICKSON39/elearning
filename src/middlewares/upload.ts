@@ -5,8 +5,15 @@ const storage = multer.memoryStorage();
 
 const fileFilter = (req: any, file: Express.Multer.File, cb: any) => {
   // Allow only image and video MIME types
-  const allowedTypes = ["image/", "video/"]; // add slash to be precise
-  const isAllowed = allowedTypes.some((type) => file.mimetype.startsWith(type));
+  const allowedMimeTypes = [
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+];
+  const isAllowed = allowedMimeTypes.some((type) => file.mimetype.startsWith(type));
 
   if (isAllowed) {
     cb(null, true);

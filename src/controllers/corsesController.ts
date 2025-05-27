@@ -34,13 +34,20 @@ export const createCourse = async (req: Request, res: Response) => {
       imageUrl = data.publicUrl;
     }
 
-    const result = await pool.query(
-  `INSERT INTO public.course (title, description, "teacherId", price, "imageUrl") VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-  [title, description, teacher_id, price, imageUrl]
-);
+   const result = await pool.query(`
+  SELECT id, title, description, price, "teacherId", "imageUrl" FROM course
+`);
 
+const courses = result.rows.map(course => ({
+  id: course.id,
+  title: course.title,
+  description: course.description,
+  price: course.price,
+  teacherId: course.teacherId,
+  imageUrl: course.imageUrl,  // <-- send full URL here
+}));
+res.json(courses);
 
-    res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error("Error creating course:", error);
     res.status(500).json({ message: "Internal server error" });
