@@ -77,7 +77,7 @@ export const createClass = asyncHandler(
                     .getPublicUrl(uniqueFilename);
 
                 await pool.query(
-                    `INSERT INTO video ("url", "classId") VALUES ($1, $2)`,
+                    `INSERT INTO video ("url", "classSessionId") VALUES ($1, $2)`,
                     [publicUrlData.publicUrl, classId]
                 );
             });
