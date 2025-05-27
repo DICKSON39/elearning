@@ -12,103 +12,79 @@ import { title } from "process";
 ;
 
 
-export const createClass = asyncHandler(
-    async (req: UserRequest, res: Response) => {
-        const teacherId = req.user?.id;
-        const { courseId, Description,  } = req.body;
+export const createClass = asyncHandler(async (req: UserRequest, res: Response) => {
+  const teacherId = req.user?.id;
+  const { courseId, Description } = req.body;
 
-        if (!teacherId) {
-             res.status(401).json({ message: "Unauthorized - User not authenticated" });
-            return
-        }
+  if (!teacherId) {
+    res.status(401).json({ message: "Unauthorized - User not authenticated" });
+    return;
+  }
 
-        if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
-             res.status(400).json({ message: "Please upload one or more videos." });
-            return
-        }
+  if (!req.files || !Array.isArray(req.files) || req.files.length === 0) {
+     res.status(400).json({ message: "Please upload one or more videos." });
+     return;
+  }
 
-        try {
-            // Check course ownership
-            const courseResult = await pool.query(
-                `SELECT id, "teacherId" FROM course WHERE id = $1`,
-                [courseId]
-            );
+  try {
+    // Check course ownership
+    const courseResult = await pool.query(
+      `SELECT id, "teacherId" FROM course WHERE id = $1`,
+      [courseId]
+    );
 
-            if (
-                courseResult.rows.length === 0 ||
-                courseResult.rows[0].teacherId !== teacherId
-            ) {
-                 res.status(403).json({
-                    message: "Unauthorized to create class for this course",
-                });
-                return
-            }
-
-            // Insert new class
-            const newClassResult = await pool.query(
-                `INSERT INTO class ( "Description", "courseId") VALUES ($1, $2, $3) RETURNING id`,
-                [Description,  courseId]
-            );
-
-            if (newClassResult.rows.length === 0) {
-                 res.status(500).json({ message: "Failed to create class" });
-                return
-            }
-
-            const classId = newClassResult.rows[0].id;
-
-            // Upload videos to Supabase
-            const uploadPromises = (req.files as Express.Multer.File[]).map(async (file) => {
-                const uniqueFilename = `classes/${classId}/${uuidv4()}${path.extname(
-                    file.originalname
-                )}`;
-
-                const { data, error } = await supabase.storage
-                    .from("myfiles")
-                    .upload(uniqueFilename, file.buffer, {
-                        contentType: file.mimetype,
-                    });
-
-                if (error) {
-                    throw new Error(`Supabase upload error: ${error.message}`);
-                }
-
-                const { data: publicUrlData } = supabase.storage
-                    .from("myfiles")
-                    .getPublicUrl(uniqueFilename);
-
-                await pool.query(
-                    `INSERT INTO video ("url", "title", "classSessionId") VALUES ($1, $2)`,
-                    [publicUrlData.publicUrl,title, classId]
-                );
-            });
-
-            await Promise.all(uploadPromises);
-
-             res.status(201).json({
-                message: "Class created successfully with videos uploaded",
-                classId,
-            });
-            return
-        } catch (error) {
-            console.error("Error creating class:", error);
-
-            if (error instanceof Error) {
-                 res
-                    .status(500)
-                    .json({ message: "Internal server error", error: error.message });
-                     return
-            }
-           
-
-             res.status(500).json({
-                message: "Internal server error",
-                error: "Unexpected error occurred",
-            });
-            return
-        }
+    if (courseResult.rows.length === 0 || courseResult.rows[0].teacherId !== teacherId) {
+       res.status(403).json({ message: "Unauthorized to create class for this course" });
+       return;
     }
-);
+
+    // Insert new class
+    const newClassResult = await pool.query(
+      `INSERT INTO class ("Description", "courseId") VALUES ($1, $2) RETURNING id`,
+      [Description, courseId]
+    );
+
+    const classId = newClassResult.rows[0].id;
+
+    // Upload videos to Supabase
+    const uploadPromises = (req.files as Express.Multer.File[]).map(async (file) => {
+      const uniqueFilename = `classes/${classId}/${uuidv4()}${path.extname(file.originalname)}`;
+
+      const { error } = await supabase.storage
+        .from("myfiles")
+        .upload(uniqueFilename, file.buffer, {
+          contentType: file.mimetype,
+        });
+
+      if (error) {
+        throw new Error(`Supabase upload error: ${error.message}`);
+      }
+
+      const { data: publicUrlData } = supabase.storage
+        .from("myfiles")
+        .getPublicUrl(uniqueFilename);
+
+      await pool.query(
+        `INSERT INTO video ("url", "title", "classSessionId") VALUES ($1, $2, $3)`,
+        [publicUrlData.publicUrl, file.originalname, classId]
+      );
+    });
+
+    await Promise.all(uploadPromises);
+
+    res.status(201).json({
+      message: "Class created successfully with videos uploaded",
+      classId,
+    });
+  } catch (error) {
+    console.error("Error creating class:", error);
+    res.status(500).json({
+      message: "Internal server error",
+      error: error instanceof Error ? error.message : "Unexpected error occurred",
+    });
+  }
+});
+
 
 
 export const getTeacherClasses = asyncHandler(async (req: UserRequest, res: Response) => {
