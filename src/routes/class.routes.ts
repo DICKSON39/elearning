@@ -15,7 +15,7 @@ import {upload} from "../middlewares/upload";
 
 const router = Router();
 
-router.post("/create-class", upload.array("videos", 5), createClass);
+router.post("/create-class", upload.array("files", 5), createClass);
 
 router.get("/class/teacher/:teacherId", protect, Teacher, getTeacherClasses);
 router.get("/class/:id", protect, getClassById);
