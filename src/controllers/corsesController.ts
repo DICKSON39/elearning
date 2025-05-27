@@ -10,7 +10,7 @@ import { supabase } from "../utils/supabaseClient";
 
 export const createCourse = async (req: Request, res: Response) => {
   try {
-    const { title, description, teacher_id } = req.body;
+    const { title, description, teacher_id,price } = req.body;
 
     let imageUrl = null;
 
@@ -35,8 +35,8 @@ export const createCourse = async (req: Request, res: Response) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO public.course (title, description, "teacherId", "imageUrl") VALUES ($1, $2, $3, $4) RETURNING *`,
-      [title, description, teacher_id, imageUrl]
+      `INSERT INTO public.course (title, description,price, "teacherId", "imageUrl") VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [title, description, teacher_id, imageUrl,price]
     );
 
     res.status(201).json(result.rows[0]);
