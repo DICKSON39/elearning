@@ -1,6 +1,7 @@
 import {
   Column,
   Entity,
+  JoinColumn,
   ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
@@ -30,6 +31,7 @@ export class Course {
   imageUrl!: string;
 
   @ManyToOne(() => User, (user) => user.courses)
+  @JoinColumn({ name: "teacherId" })
   Teacher!: User;
 
   @OneToMany(() => Class, (classSession) => classSession.course)
