@@ -101,9 +101,9 @@ export const getTeacherClasses = asyncHandler(async (req: UserRequest, res: Resp
   if (!teacherId) return res.status(401).json({ message: "Unauthorized" });
 
   try {
-    // Get all classes with their course name
+    // Get all classes with their course title
     const classQuery = `
-      SELECT class.*, course.name AS course_name 
+      SELECT class.*, course.title AS course_name 
   FROM class 
   INNER JOIN course ON class."courseId" = course.id 
   WHERE course."teacherId" = $1
@@ -139,7 +139,7 @@ export const getClassById = asyncHandler(async (req, res) => {
     if (isNaN(classId)) return res.status(400).json({ message: "Invalid class ID" });
 
     const query = `
-    SELECT class.*, course.name AS course_name 
+    SELECT class.*, course.title AS course_name 
     FROM class 
     INNER JOIN course ON class.courseId = course.id 
     WHERE class.id = $1
