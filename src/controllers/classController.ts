@@ -191,55 +191,51 @@ export const deleteClass = asyncHandler(async (req:UserRequest, res:Response) =>
 });
 
 
-export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Response) => {
-    if (!req.user) {
-         res.status(401).json({ message: "Not Authorized, sorry" });
+const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Response) => {
+    const studentId = req.user?.id;
+
+    if (!studentId) {
+         res.status(401).json({ message: "Not Authorized" });
         return
     }
 
-    const studentId = req.user.id;
+    // Get enrolled class IDs
+    const enrolledClasses = await pool.query(`
+    SELECT enrollment."classId"
+    FROM enrollment
+    WHERE enrollment."studentId" = $1
+  `, [studentId]);
 
-    // 1. Check if student is enrolled
-    const enrollment = await pool.query(
-        `SELECT 1 FROM enrollment WHERE "studentId" = $1 LIMIT 1`,
-        [studentId]
-    );
-
-    if (enrollment.rows.length === 0) {
-         res.status(400).json({ message: "You must be enrolled" });
+    if (enrolledClasses.rowCount === 0) {
+        res.status(400).json({ message: "You must be enrolled in a class." });
         return
     }
 
-    // 2. Get classes + videos + course title
-    const { rows: classes } = await pool.query(
-        `
-            SELECT
-                class.id AS "classId",
-                class."Description" AS "description",
-                course.title AS "courseTitle",
-                COALESCE(
-                                json_agg(
-                                json_build_object(
-                                        'id', video.id,
-                                        'title', video.title,
-                                        'url', video.url
-                                )
-                                        ) FILTER (WHERE video.id IS NOT NULL),
-                                '[]'
-                ) AS videos
-            FROM class
-                     INNER JOIN course ON class."courseId" = course.id
-                     INNER JOIN enrollment ON enrollment."courseId" = course.id
-                     LEFT JOIN video ON video."classSessionId" = class.id
-            WHERE enrollment."studentId" = $1
-            GROUP BY class.id, class."Description", course.title
-        `,
-        [studentId]
-    );
+    const classIds = enrolledClasses.rows.map((row) => row.classId);
 
-     res.status(200).json({ classes });
-    return
+    // Fetch class and course info
+    const { rows: classes } = await pool.query(`
+        SELECT class.id, class."Description", course.title AS course_name
+        FROM class
+                 INNER JOIN course ON class."courseId" = course.id
+        WHERE class.id = ANY($1::int[])
+    `, [classIds]);
+
+    // Add videos to each class
+    const classWithVideos = await Promise.all(classes.map(async (cls) => {
+        const { rows: videos } = await pool.query(`
+      SELECT id, title, url FROM video WHERE "classSessionId" = $1
+    `, [cls.id]);
+
+        return {
+            ...cls,
+            videos,
+        };
+    }));
+
+    res.status(200).json({ classes: classWithVideos });
 });
+
 
 
 
