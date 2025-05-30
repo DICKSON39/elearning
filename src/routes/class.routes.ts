@@ -23,7 +23,7 @@ router.get("/class/teacher", protect, Teacher, getTeacherClasses);
 router.get("/class/:id", protect, getClassById);
 router.put("/class/:id", protect, Teacher, updateClass);
 router.delete("/class/:id", protect, Teacher, deleteClass);
-router.get('class/mypaid-class',protect,allMyPaidClasses)
+router.get('/class/mypaid-class',protect,allMyPaidClasses)
 
 
 export default router;
