@@ -192,15 +192,16 @@ export const deleteClass = asyncHandler(async (req:UserRequest, res:Response) =>
 
 
 export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Response) => {
+    const debugLogs: any[] = []; // collect debug info to return in response
+
     const studentId = req.user?.id;
 
     if (!studentId) {
-        console.warn("⚠️ No student ID found on request user");
-         res.status(401).json({ message: "Not Authorized" });
-        return
+        debugLogs.push("⚠️ No student ID found on request user");
+        return res.status(401).json({ message: "Not Authorized", debug: debugLogs });
     }
 
-    console.log(`🔍 Fetching enrolled courses for studentId: ${studentId}`);
+    debugLogs.push(`🔍 Fetching enrolled courses for studentId: ${studentId}`);
 
     // Step 1: Get enrolled course IDs
     const enrollmentResult = await pool.query(
@@ -209,17 +210,16 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
     );
 
     const enrolledCourses = enrollmentResult.rows;
-
-    console.log("📘 Enrolled courses:", enrolledCourses);
+    debugLogs.push("📘 Enrolled courses:", enrolledCourses);
 
     if (enrolledCourses.length === 0) {
-        console.warn("⚠️ Student is not enrolled in any courses");
-        res.status(400).json({ message: "You must be enrolled in a course" });
+        debugLogs.push("⚠️ Student is not enrolled in any courses");
+         res.status(400).json({ message: "You must be enrolled in a course", debug: debugLogs });
         return
     }
 
     const courseIds = enrolledCourses.map((row) => row.courseId);
-    console.log("🧾 Course IDs:", courseIds);
+    debugLogs.push("🧾 Course IDs:", courseIds);
 
     // Step 2: Get all classes under those courses
     const classResult = await pool.query(
@@ -231,11 +231,15 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
     );
 
     const classes = classResult.rows;
-    console.log("🏫 Classes found:", classes.length);
+    debugLogs.push(`🏫 Classes found: ${classes.length}`);
 
     if (classes.length === 0) {
-        console.warn("⚠️ No classes found for these courses");
-         res.status(200).json({ message: "No classes found for your enrolled courses", classes: [] });
+        debugLogs.push("⚠️ No classes found for these courses");
+         res.status(200).json({
+            message: "No classes found for your enrolled courses",
+            classes: [],
+            debug: debugLogs,
+        });
         return
     }
 
@@ -243,7 +247,7 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
     const classWithVideos = await Promise.all(
         classes.map(async (cls) => {
             if (!cls.id) {
-                console.error("🚫 Invalid class ID for class:", cls);
+                debugLogs.push(`🚫 Invalid class ID for class: ${JSON.stringify(cls)}`);
                 return {
                     ...cls,
                     videos: [],
@@ -251,11 +255,10 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
                 };
             }
 
-            console.log(`📺 Fetching videos for classId: ${cls.id}`);
+            debugLogs.push(`📺 Fetching videos for classId: ${cls.id}`);
             const videoQuery = `SELECT id, title, url FROM video WHERE "classSessionId" = $1`;
             const { rows: videos } = await pool.query(videoQuery, [cls.id]);
-
-            console.log(`✅ Videos for class ${cls.id}:`, videos.length);
+            debugLogs.push(`✅ Videos found for class ${cls.id}: ${videos.length}`);
 
             return {
                 ...cls,
@@ -265,8 +268,13 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
     );
 
     // Step 4: Return final result
-    res.status(200).json({ classes: classWithVideos });
+    res.status(200).json({
+        message: "Classes and videos fetched successfully",
+        classes: classWithVideos,
+        debug: debugLogs,
+    });
 });
+
 
 
 
