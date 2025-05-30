@@ -191,7 +191,7 @@ export const deleteClass = asyncHandler(async (req:UserRequest, res:Response) =>
 });
 
 
-const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Response) => {
+export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Response) => {
     const studentId = req.user?.id;
 
     if (!studentId) {
