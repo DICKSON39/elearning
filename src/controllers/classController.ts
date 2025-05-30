@@ -192,13 +192,13 @@ export const deleteClass = asyncHandler(async (req:UserRequest, res:Response) =>
 
 
 export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Response) => {
-    const debugLogs: any[] = []; // collect debug info to return in response
+    const debugLogs: any[] = [];
 
     const studentId = req.user?.id;
 
     if (!studentId) {
         debugLogs.push("⚠️ No student ID found on request user");
-         res.status(401).json({ message: "Not Authorized", debug: debugLogs });
+        res.status(401).json({ message: "Not Authorized", debug: debugLogs });
         return;
     }
 
@@ -215,7 +215,7 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
 
     if (enrolledCourses.length === 0) {
         debugLogs.push("⚠️ Student is not enrolled in any courses");
-         res.status(400).json({ message: "You must be enrolled in a course", debug: debugLogs });
+        res.status(400).json({ message: "You must be enrolled in a course", debug: debugLogs });
         return
     }
 
@@ -223,6 +223,7 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
     debugLogs.push("🧾 Course IDs:", courseIds);
 
     // Step 2: Get all classes under those courses
+    // class.* will include the 'Description' column correctly
     const classResult = await pool.query(
         `SELECT class.*, course.title AS course_name
          FROM class
@@ -236,7 +237,7 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
 
     if (classes.length === 0) {
         debugLogs.push("⚠️ No classes found for these courses");
-         res.status(200).json({
+        res.status(200).json({
             message: "No classes found for your enrolled courses",
             classes: [],
             debug: debugLogs,
@@ -248,6 +249,7 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
     const classWithVideos = await Promise.all(
         classes.map(async (cls) => {
             if (!cls.id) {
+                // This debug log would show you the problematic class data
                 debugLogs.push(`🚫 Invalid class ID for class: ${JSON.stringify(cls)}`);
                 return {
                     ...cls,
@@ -256,7 +258,8 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
                 };
             }
 
-            debugLogs.push(`📺 Fetching videos for classId: ${cls.id}`);
+            // You can use cls.Description here for logging or display
+            debugLogs.push(`📺 Fetching videos for classId: ${cls.id} (Description: ${cls.Description})`);
             const videoQuery = `SELECT id, title, url FROM video WHERE "classSessionId" = $1`;
             const { rows: videos } = await pool.query(videoQuery, [cls.id]);
             debugLogs.push(`✅ Videos found for class ${cls.id}: ${videos.length}`);
