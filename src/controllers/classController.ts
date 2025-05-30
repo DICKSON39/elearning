@@ -258,6 +258,9 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
                 };
             }
 
+            console.log("--- AFTER Promise.all ---"); // Add this
+            debugLogs.push("✅ All videos fetched."); // Add this
+
             // You can use cls.Description here for logging or display
             debugLogs.push(`📺 Fetching videos for classId: ${cls.id} (Description: ${cls.Description})`);
             const videoQuery = `SELECT id, title, url FROM video WHERE "classSessionId" = $1`;
