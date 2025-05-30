@@ -8,8 +8,8 @@ import { supabase } from "../utils/supabaseClient"; // update with your actual p
 import { asyncHandler } from "../middlewares/asyncHandler";
 import pool from "../config/db.config";
 import { UserRequest } from "../utils/types/user";
-import { title } from "process";
-;
+
+
 
 
 export const createClass = asyncHandler(async (req: UserRequest, res: Response) => {
@@ -199,42 +199,47 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
         return
     }
 
-    // Get enrolled course IDs
-    const enrolledCourses = await pool.query(`
-        SELECT "courseId"
-        FROM enrollment
-        WHERE "studentId" = $1
-    `, [studentId]);
+    // Get the course IDs the student is enrolled in
+    const enrollmentResult = await pool.query(
+        `SELECT "courseId" FROM enrollment WHERE "studentId" = $1`,
+        [studentId]
+    );
 
-    if (enrolledCourses.rowCount === 0) {
-         res.status(400).json({ message: "You must be enrolled in a course." });
+    const enrolledCourses = enrollmentResult.rows;
+
+    if (enrolledCourses.length === 0) {
+         res.status(400).json({ message: "You must be enrolled in a course" });
         return
     }
 
-    const courseIds = enrolledCourses.rows.map((row) => row.courseId);
+    const courseIds = enrolledCourses.map((row) => row.courseId);
 
-    // Get classes for those courses
-    const { rows: classes } = await pool.query(`
-        SELECT class.id, class."Description", course.title AS course_name
-        FROM class
-                 INNER JOIN course ON class."courseId" = course.id
-        WHERE course.id = ANY($1::int[])
-    `, [courseIds]);
+    // Get all classes that belong to these courses
+    const classResult = await pool.query(
+        `SELECT class.*, course.title AS course_name
+     FROM class
+     INNER JOIN course ON class."courseId" = course.id
+     WHERE class."courseId" = ANY($1::int[])`,
+        [courseIds]
+    );
 
-    // Attach videos to each class
-    const classWithVideos = await Promise.all(classes.map(async (cls) => {
-        const { rows: videos } = await pool.query(`
-            SELECT id, title, url FROM video WHERE "classSessionId" = $1
-        `, [cls.id]);
+    const classes = classResult.rows;
 
-        return {
-            ...cls,
-            videos,
-        };
-    }));
+    // For each class, fetch its videos
+    const classWithVideos = await Promise.all(
+        classes.map(async (cls) => {
+            const videoQuery = `SELECT id, title, url FROM video WHERE "classSessionId" = $1`;
+            const { rows: videos } = await pool.query(videoQuery, [cls.id]);
+
+            return {
+                ...cls,
+                videos,
+            };
+        })
+    );
 
     res.status(200).json({ classes: classWithVideos });
-});
+})
 
 
 
