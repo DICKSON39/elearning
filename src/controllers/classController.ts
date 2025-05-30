@@ -198,7 +198,8 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
 
     if (!studentId) {
         debugLogs.push("⚠️ No student ID found on request user");
-        return res.status(401).json({ message: "Not Authorized", debug: debugLogs });
+         res.status(401).json({ message: "Not Authorized", debug: debugLogs });
+        return;
     }
 
     debugLogs.push(`🔍 Fetching enrolled courses for studentId: ${studentId}`);
