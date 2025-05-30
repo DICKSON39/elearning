@@ -193,46 +193,8 @@ export const deleteClass = asyncHandler(async (req:UserRequest, res:Response) =>
 
 export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Response) => {
     const debugLogs: any[] = [];
+    // ... (previous code)
 
-    const studentId = req.user?.id;
-
-    if (!studentId) {
-        debugLogs.push("⚠️ No student ID found on request user");
-        res.status(401).json({ message: "Not Authorized", debug: debugLogs });
-        return;
-    }
-
-    debugLogs.push(`🔍 Fetching enrolled courses for studentId: ${studentId}`);
-
-    // Step 1: Get enrolled course IDs
-    const enrollmentResult = await pool.query(
-        `SELECT "courseId" FROM enrollment WHERE "studentId" = $1`,
-        [studentId]
-    );
-
-    const enrolledCourses = enrollmentResult.rows;
-    debugLogs.push("📘 Enrolled courses:", enrolledCourses);
-
-    if (enrolledCourses.length === 0) {
-        debugLogs.push("⚠️ Student is not enrolled in any courses");
-        res.status(400).json({ message: "You must be enrolled in a course", debug: debugLogs });
-        return
-    }
-
-    const courseIds = enrolledCourses.map((row) => row.courseId);
-    debugLogs.push("🧾 Course IDs:", courseIds);
-
-    // Step 2: Get all classes under those courses
-    // class.* will include the 'Description' column correctly
-    const classResult = await pool.query(
-        `SELECT class.*, course.title AS course_name
-         FROM class
-                  INNER JOIN course ON class."courseId" = course.id
-         WHERE class."courseId" = ANY($1::int[])`,
-        [courseIds]
-    );
-
-    const classes = classResult.rows;
     debugLogs.push(`🏫 Classes found: ${classes.length}`);
 
     if (classes.length === 0) {
@@ -245,12 +207,13 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
         return
     }
 
-    // Step 3: Fetch videos for each class
+    console.log("--- BEFORE Promise.all ---"); // Add this
+    debugLogs.push("🚀 Starting video fetch via Promise.all"); // Add this
     const classWithVideos = await Promise.all(
         classes.map(async (cls) => {
             if (!cls.id) {
-                // This debug log would show you the problematic class data
                 debugLogs.push(`🚫 Invalid class ID for class: ${JSON.stringify(cls)}`);
+                // This 'return' only affects the mapped array element, not the HTTP response
                 return {
                     ...cls,
                     videos: [],
@@ -258,7 +221,6 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
                 };
             }
 
-            // You can use cls.Description here for logging or display
             debugLogs.push(`📺 Fetching videos for classId: ${cls.id} (Description: ${cls.Description})`);
             const videoQuery = `SELECT id, title, url FROM video WHERE "classSessionId" = $1`;
             const { rows: videos } = await pool.query(videoQuery, [cls.id]);
@@ -270,11 +232,17 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
             };
         })
     );
+    console.log("--- AFTER Promise.all ---"); // Add this
+    debugLogs.push("✅ All videos fetched."); // Add this
 
     // Step 4: Return final result
+    console.log("--- Sending final response ---"); // Add this
+    console.log("Final classes data (first 2):", classWithVideos.slice(0, 2)); // Add this
+    console.log("Final debug logs (last 5):", debugLogs.slice(-5)); // Add this
+
     res.status(200).json({
         message: "Classes and videos fetched successfully",
-        classes: classWithVideos,
+        classes: classWithVideos, // This array *will* contain objects with "note: Invalid class ID" if cls.id was falsy
         debug: debugLogs,
     });
 });
