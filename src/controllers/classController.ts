@@ -199,33 +199,33 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
         return
     }
 
-    // Get enrolled class IDs
-    const enrolledClasses = await pool.query(`
-    SELECT enrollment."classId"
-    FROM enrollment
-    WHERE enrollment."studentId" = $1
-  `, [studentId]);
+    // Get enrolled course IDs
+    const enrolledCourses = await pool.query(`
+        SELECT "courseId"
+        FROM enrollment
+        WHERE "studentId" = $1
+    `, [studentId]);
 
-    if (enrolledClasses.rowCount === 0) {
-        res.status(400).json({ message: "You must be enrolled in a class." });
+    if (enrolledCourses.rowCount === 0) {
+         res.status(400).json({ message: "You must be enrolled in a course." });
         return
     }
 
-    const classIds = enrolledClasses.rows.map((row) => row.classId);
+    const courseIds = enrolledCourses.rows.map((row) => row.courseId);
 
-    // Fetch class and course info
+    // Get classes for those courses
     const { rows: classes } = await pool.query(`
         SELECT class.id, class."Description", course.title AS course_name
         FROM class
                  INNER JOIN course ON class."courseId" = course.id
-        WHERE class.id = ANY($1::int[])
-    `, [classIds]);
+        WHERE course.id = ANY($1::int[])
+    `, [courseIds]);
 
-    // Add videos to each class
+    // Attach videos to each class
     const classWithVideos = await Promise.all(classes.map(async (cls) => {
         const { rows: videos } = await pool.query(`
-      SELECT id, title, url FROM video WHERE "classSessionId" = $1
-    `, [cls.id]);
+            SELECT id, title, url FROM video WHERE "classSessionId" = $1
+        `, [cls.id]);
 
         return {
             ...cls,
@@ -235,6 +235,7 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
 
     res.status(200).json({ classes: classWithVideos });
 });
+
 
 
 
