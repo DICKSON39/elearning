@@ -195,11 +195,14 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
     const studentId = req.user?.id;
 
     if (!studentId) {
+        console.warn("⚠️ No student ID found on request user");
          res.status(401).json({ message: "Not Authorized" });
         return
     }
 
-    // Get the course IDs the student is enrolled in
+    console.log(`🔍 Fetching enrolled courses for studentId: ${studentId}`);
+
+    // Step 1: Get enrolled course IDs
     const enrollmentResult = await pool.query(
         `SELECT "courseId" FROM enrollment WHERE "studentId" = $1`,
         [studentId]
@@ -207,29 +210,52 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
 
     const enrolledCourses = enrollmentResult.rows;
 
+    console.log("📘 Enrolled courses:", enrolledCourses);
+
     if (enrolledCourses.length === 0) {
-         res.status(400).json({ message: "You must be enrolled in a course" });
+        console.warn("⚠️ Student is not enrolled in any courses");
+        res.status(400).json({ message: "You must be enrolled in a course" });
         return
     }
 
     const courseIds = enrolledCourses.map((row) => row.courseId);
+    console.log("🧾 Course IDs:", courseIds);
 
-    // Get all classes that belong to these courses
+    // Step 2: Get all classes under those courses
     const classResult = await pool.query(
         `SELECT class.*, course.title AS course_name
-     FROM class
-     INNER JOIN course ON class."courseId" = course.id
-     WHERE class."courseId" = ANY($1::int[])`,
+         FROM class
+                  INNER JOIN course ON class."courseId" = course.id
+         WHERE class."courseId" = ANY($1::int[])`,
         [courseIds]
     );
 
     const classes = classResult.rows;
+    console.log("🏫 Classes found:", classes.length);
 
-    // For each class, fetch its videos
+    if (classes.length === 0) {
+        console.warn("⚠️ No classes found for these courses");
+         res.status(200).json({ message: "No classes found for your enrolled courses", classes: [] });
+        return
+    }
+
+    // Step 3: Fetch videos for each class
     const classWithVideos = await Promise.all(
         classes.map(async (cls) => {
+            if (!cls.id) {
+                console.error("🚫 Invalid class ID for class:", cls);
+                return {
+                    ...cls,
+                    videos: [],
+                    note: "Invalid class ID"
+                };
+            }
+
+            console.log(`📺 Fetching videos for classId: ${cls.id}`);
             const videoQuery = `SELECT id, title, url FROM video WHERE "classSessionId" = $1`;
             const { rows: videos } = await pool.query(videoQuery, [cls.id]);
+
+            console.log(`✅ Videos for class ${cls.id}:`, videos.length);
 
             return {
                 ...cls,
@@ -238,8 +264,10 @@ export const allMyPaidClasses = asyncHandler(async (req: UserRequest, res: Respo
         })
     );
 
+    // Step 4: Return final result
     res.status(200).json({ classes: classWithVideos });
-})
+});
+
 
 
 
