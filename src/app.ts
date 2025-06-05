@@ -8,7 +8,7 @@ import userRoutes from "./routes/user.routes";
 import courseRoutes from "./routes/course.routes";
 import teacherRoutes from "./routes/teacher.routes";
 import classRoutes from "./routes/class.routes";
-import path from "path";
+
 import paymentRoutes from "./routes/payment.routes";
 import enrollmentRoutes from "./routes/enrollment.routes";
 // import { seedInviteCodes } from "./seeders/inviteCode.seed";
@@ -69,5 +69,6 @@ AppDataSource.initialize().then(async () => {
   // await createDefaultRoles();
   
 
-  app.listen(PORT, () => console.log(`✅✅Port 👌👌👌is running `));
+  app.listen(PORT, () => console.log(`✅✅Port 👌👌👌is running ${PORT} `));
 });
+

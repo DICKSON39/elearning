@@ -1,1 +1,25 @@
-POST https://elearning-f7yg.onrender.com/api/v1/auth/login
+POST http://localhost:5000/api/v1/auth/login
+Content-Type: application/json
+
+{
+  "email": "main@gmail.com",
+  "password": "123456789"
+}
+
+
+
+
+### register User
+
+POST http://localhost:5000/api/v1/auth/register
+Content-Type: application/json
+
+{
+  "name": "test User",
+  "email": "test@gmail.com",
+  "phoneNumber": "02839292992",
+  "password": "123456789"
+
+}
+
+
