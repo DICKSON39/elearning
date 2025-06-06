@@ -1,10 +1,12 @@
-POST http://localhost:5000/api/v1/auth/login
+###LoGIN TO THE WeB
+POST https://elearning-f7yg.onrender.com/api/v1/auth/login
 Content-Type: application/json
 
 {
-  "email": "main@gmail.com",
+  "email": "test@gmail.com",
   "password": "123456789"
 }
+
 
 
 
@@ -21,5 +23,11 @@ Content-Type: application/json
   "password": "123456789"
 
 }
+
+### Get My paid Classe
+GET https://elearning-f7yg.onrender.com/api/v1/mypaid-class
+Content-Type: application/json
+Authorization: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOjUsInJvbGVJZCI6MywiaWF0IjoxNzQ5MTEyNTEzLCJleHAiOjE3NDkxMTM0MTN9.SmVIaGUhhxhZlJFGtQUi6x6b13MngGi0NvXIQxoW9c4
+
 
 
